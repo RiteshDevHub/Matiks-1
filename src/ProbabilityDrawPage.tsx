@@ -1,6 +1,11 @@
 // Probability Draw Duels game screen
 import { useState, useEffect, useRef, useMemo } from "react";
 import PhysicsBalls, { type BallConfig } from "./PhysicsBalls";
+import {
+  generateQuestion,
+  type GeneratedQuestion,
+  type BallCounts,
+} from "./probabilityQuestionGenerator";
 
 const assetPathPrefix  = "/assets";
 const imgStarIcon      = `${assetPathPrefix}/dd268.svg`;
@@ -9,22 +14,6 @@ const imgBackspaceIcon = `${assetPathPrefix}/caa66.svg`;
 
 // ── Color mapping ──
 const BALL_COLORS = ["#ef4444", "#3b82f6", "#22c55e"] as const;
-type ColorKey = "R" | "B" | "G";
-const COLOR_KEYS: ColorKey[] = ["R", "B", "G"];
-type BallCounts = Record<ColorKey, number>;
-
-// ── Fraction helpers ──
-function gcd(a: number, b: number): number {
-  a = Math.abs(a); b = Math.abs(b);
-  while (b) { [a, b] = [b, a % b]; }
-  return a;
-}
-
-function simplifyFrac(n: number, d: number): string {
-  if (d === 0) return "0/0";
-  const g = gcd(n, d);
-  return `${n / g}/${d / g}`;
-}
 
 // ── Ball generation: 3 colors, 1–8 each, total 10–20 ──
 function generateRoundBalls(): BallConfig {
@@ -45,149 +34,9 @@ function toBallCounts(balls: BallConfig): BallCounts {
   };
 }
 
-// ── Question type ──
-type Q = { text: string; num: number; den: number };
-
-// ── Question pool builder (7 levels) ──
-function buildQuestionPool(c: BallCounts, total: number): Q[][] {
-  const pool: Q[][] = [[], [], [], [], [], [], []];
-  const den2 = total * (total - 1); // denominator for 2-draw problems
-
-  // Level 1 — Single ball: P(X), P(not X)
-  for (const k of COLOR_KEYS) {
-    if (c[k] > 0) {
-      pool[0].push({ text: `P(${k}) = ?`, num: c[k], den: total });
-      pool[0].push({ text: `P(not ${k}) = ?`, num: total - c[k], den: total });
-    }
-  }
-
-  // Level 2 — OR / NOT: P(X or Y)
-  for (let i = 0; i < COLOR_KEYS.length; i++) {
-    for (let j = i + 1; j < COLOR_KEYS.length; j++) {
-      const ki = COLOR_KEYS[i], kj = COLOR_KEYS[j];
-      if (c[ki] > 0 && c[kj] > 0) {
-        pool[1].push({ text: `P(${ki} or ${kj}) = ?`, num: c[ki] + c[kj], den: total });
-      }
-    }
-  }
-
-  // Level 3 — Two same-color draws: P(2X) = X*(X-1) / (T*(T-1))
-  for (const k of COLOR_KEYS) {
-    if (c[k] >= 2) {
-      pool[2].push({ text: `P(2${k}) = ?`, num: c[k] * (c[k] - 1), den: den2 });
-    }
-  }
-
-  // Level 4 — AND (two different colors): P(X and Y) = 2*X*Y / (T*(T-1))
-  for (let i = 0; i < COLOR_KEYS.length; i++) {
-    for (let j = i + 1; j < COLOR_KEYS.length; j++) {
-      const ki = COLOR_KEYS[i], kj = COLOR_KEYS[j];
-      if (c[ki] > 0 && c[kj] > 0) {
-        pool[3].push({ text: `P(${ki} and ${kj}) = ?`, num: 2 * c[ki] * c[kj], den: den2 });
-      }
-    }
-  }
-
-  // Level 5 — Compound OR: P(2X or 2Y)
-  for (let i = 0; i < COLOR_KEYS.length; i++) {
-    for (let j = i + 1; j < COLOR_KEYS.length; j++) {
-      const ki = COLOR_KEYS[i], kj = COLOR_KEYS[j];
-      if (c[ki] >= 2 && c[kj] >= 2) {
-        pool[4].push({
-          text: `P(2${ki} or 2${kj}) = ?`,
-          num: c[ki] * (c[ki] - 1) + c[kj] * (c[kj] - 1),
-          den: den2,
-        });
-      }
-    }
-  }
-  // Fallback for Level 5 if not enough colors have count >= 2
-  if (pool[4].length === 0) {
-    for (const k of COLOR_KEYS) {
-      if (c[k] >= 2) {
-        const others = COLOR_KEYS.filter(x => x !== k);
-        const ki = others[0], kj = others[1];
-        if (c[ki] > 0 && c[kj] > 0) {
-          pool[4].push({
-            text: `P(2${k} or (${ki} and ${kj})) = ?`,
-            num: c[k] * (c[k] - 1) + 2 * c[ki] * c[kj],
-            den: den2,
-          });
-        }
-      }
-    }
-  }
-
-  // Level 6 — At least / exactly (2 draws)
-  for (const k of COLOR_KEYS) {
-    if (c[k] > 0) {
-      // P(at least 1X) = 1 - P(no X in 2 draws)
-      pool[5].push({
-        text: `P(at least 1${k}) = ?`,
-        num: den2 - (total - c[k]) * (total - c[k] - 1),
-        den: den2,
-      });
-      // P(exactly 1X) = 2 * X * (T-X) / (T*(T-1))
-      if (total - c[k] > 0) {
-        pool[5].push({
-          text: `P(exactly 1${k}) = ?`,
-          num: 2 * c[k] * (total - c[k]),
-          den: den2,
-        });
-      }
-    }
-  }
-
-  // Level 7 — Hard
-  for (const k of COLOR_KEYS) {
-    if (total - c[k] >= 2) {
-      pool[6].push({
-        text: `P(no ${k} in 2 draws) = ?`,
-        num: (total - c[k]) * (total - c[k] - 1),
-        den: den2,
-      });
-    }
-  }
-  const sameNum = COLOR_KEYS.reduce((s, k) => s + c[k] * (c[k] - 1), 0);
-  pool[6].push({ text: "P(2 same color) = ?", num: sameNum, den: den2 });
-  pool[6].push({ text: "P(2 diff colors) = ?", num: den2 - sameNum, den: den2 });
-
-  return pool;
-}
-
-// Pick a random question from the pool at the given level, avoiding repeats
-function pickQuestion(pool: Q[][], level: number, asked: Set<string>): Q {
-  const lvl = Math.min(Math.max(0, level - 1), 6);
-
-  // Try current level
-  let avail = pool[lvl]?.filter(q => !asked.has(q.text)) ?? [];
-  if (avail.length > 0) return avail[Math.floor(Math.random() * avail.length)];
-
-  // Try higher levels
-  for (let i = lvl + 1; i < 7; i++) {
-    avail = pool[i]?.filter(q => !asked.has(q.text)) ?? [];
-    if (avail.length > 0) return avail[Math.floor(Math.random() * avail.length)];
-  }
-  // Try lower levels
-  for (let i = lvl - 1; i >= 0; i--) {
-    avail = pool[i]?.filter(q => !asked.has(q.text)) ?? [];
-    if (avail.length > 0) return avail[Math.floor(Math.random() * avail.length)];
-  }
-
-  // All exhausted — reset and pick from any non-empty level
-  asked.clear();
-  for (let i = lvl; i < 7; i++) {
-    if (pool[i]?.length > 0) return pool[i][Math.floor(Math.random() * pool[i].length)];
-  }
-  for (let i = lvl - 1; i >= 0; i--) {
-    if (pool[i]?.length > 0) return pool[i][Math.floor(Math.random() * pool[i].length)];
-  }
-  return pool[0][0];
-}
-
 // ── Constants ──
-const GAME_SECONDS = 180;
-const OPPONENT_THRESHOLDS = [140, 100, 60, 20]; // timeLeft values when opponent scores
+const GAME_SECONDS = 120; // 2-minute game timer
+const OPPONENT_THRESHOLDS = [90, 60, 30, 10]; // timeLeft values when opponent reaches 1, 2, 3, 4 points
 
 const KEYS = [
   ["1", "2", "3"],
@@ -206,41 +55,42 @@ export default function ProbabilityDrawPage() {
   // Game identity — increment to start a new game
   const [gameKey, setGameKey] = useState(0);
 
-  // Generate balls & question pool once per game
+  // Generate balls once per game; stays constant throughout the 2 minutes
   const roundBalls = useMemo(() => generateRoundBalls(), [gameKey]);
-  const questionPool = useMemo(() => {
-    const counts = toBallCounts(roundBalls);
-    const total = Object.values(roundBalls).reduce((a, b) => a + b, 0);
-    return buildQuestionPool(counts, total);
-  }, [roundBalls]);
+  const ballCounts = useMemo(() => toBallCounts(roundBalls), [roundBalls]);
 
   // Game state
   const [timeLeft, setTimeLeft] = useState(GAME_SECONDS);
   const [playerScore, setPlayerScore] = useState(0);
   const [opponentScore, setOpponentScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
-  const [question, setQuestion] = useState<Q | null>(null);
+  const [difficulty, setDifficulty] = useState(1);
+  const [question, setQuestion] = useState<GeneratedQuestion | null>(null);
   const [active, setActive] = useState<"n" | "d">("n");
   const [numerator, setNumerator] = useState("");
   const [denominator, setDenom] = useState("");
-  const [flash, setFlash] = useState(false); // brief green flash on correct
+  const [flash, setFlash] = useState(false); // brief green flash on correct answer
 
-  // Mutable refs for callback-safe access
+  // Mutable refs for stable callbacks
   const scoreRef = useRef(0);
+  const difficultyRef = useRef(1);
   const askedRef = useRef<Set<string>>(new Set());
   const opponentIdxRef = useRef(0);
-  const flashingRef = useRef(false); // prevents key input during flash
+  const flashingRef = useRef(false);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Initialize first question when a new game starts ──
+  // ── Initialize first question (Level 1) when a new game starts ──
   useEffect(() => {
     askedRef.current = new Set();
     scoreRef.current = 0;
+    difficultyRef.current = 1;
     opponentIdxRef.current = 0;
-    const q = pickQuestion(questionPool, 1, askedRef.current);
-    askedRef.current.add(q.text);
-    setQuestion(q);
-  }, [questionPool]);
+    setDifficulty(1);
+
+    const firstQ = generateQuestion(ballCounts, 1, askedRef.current);
+    askedRef.current.add(firstQ.question);
+    setQuestion(firstQ);
+  }, [ballCounts]);
 
   // ── Observe physics container size ──
   useEffect(() => {
@@ -254,15 +104,18 @@ export default function ProbabilityDrawPage() {
     return () => ro.disconnect();
   }, []);
 
-  // ── Timer countdown ──
+  // ── Timer countdown (2:00 -> 0:00) ──
   useEffect(() => {
     if (gameOver) return;
-    if (timeLeft <= 0) { setGameOver(true); return; }
+    if (timeLeft <= 0) {
+      setGameOver(true);
+      return;
+    }
     const t = setTimeout(() => setTimeLeft(s => s - 1), 1000);
     return () => clearTimeout(t);
   }, [timeLeft, gameOver]);
 
-  // ── Opponent scoring (4 points over 3 minutes) ──
+  // ── Opponent scoring (exactly 4 points over 2 minutes) ──
   useEffect(() => {
     if (gameOver) return;
     while (
@@ -285,15 +138,18 @@ export default function ProbabilityDrawPage() {
     scoreRef.current += 1;
     setPlayerScore(scoreRef.current);
 
+    // Difficulty increases by one after each correct answer
+    difficultyRef.current += 1;
+    setDifficulty(difficultyRef.current);
+
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
     flashTimerRef.current = setTimeout(() => {
       setFlash(false);
       flashingRef.current = false;
 
-      // Advance difficulty: level = floor(score / 2) + 1, capped at 7
-      const newLevel = Math.min(7, Math.floor(scoreRef.current / 2) + 1);
-      const nextQ = pickQuestion(questionPool, newLevel, askedRef.current);
-      askedRef.current.add(nextQ.text);
+      // Generate next question at the new difficulty level using the same ball counts
+      const nextQ = generateQuestion(ballCounts, difficultyRef.current, askedRef.current);
+      askedRef.current.add(nextQ.question);
       setQuestion(nextQ);
 
       setNumerator("");
@@ -331,7 +187,7 @@ export default function ProbabilityDrawPage() {
     if (isNum) setNumerator(newVal);
     else setDenom(newVal);
 
-    // Auto-check: if both fields have valid numbers, test the fraction
+    // Auto-check: if both fields have valid numbers, mathematically test fraction equivalence
     const curNum = isNum ? newVal : numerator;
     const curDen = isNum ? denominator : newVal;
 
@@ -339,8 +195,8 @@ export default function ProbabilityDrawPage() {
       const n = parseInt(curNum, 10);
       const d = parseInt(curDen, 10);
       if (!isNaN(n) && !isNaN(d) && d > 0 && n >= 0) {
-        // Cross-multiply to check fraction equality (accepts equivalent fractions)
-        if (n * question.den === d * question.num) {
+        // Cross-multiply to check fraction equality (accepts all equivalent fractions)
+        if (n * question.denominator === d * question.numerator) {
           handleCorrect();
         }
       }
@@ -368,7 +224,7 @@ export default function ProbabilityDrawPage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   });
 
-  // ── New game ──
+  // ── Start a completely new game ──
   function startNewGame() {
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
     setGameKey(k => k + 1);
@@ -478,7 +334,7 @@ export default function ProbabilityDrawPage() {
           {/* Question */}
           <div className="flex flex-col items-center pt-6 w-full" data-node-id="11:591">
             <span className="font-['Space_Grotesk:Bold'] font-bold text-white text-[24px] sm:text-[28px] text-center leading-normal max-w-full px-2">
-              {gameOver ? "Time's up!" : (question?.text ?? "")}
+              {gameOver ? "Time's up!" : (question?.question ?? "")}
             </span>
           </div>
         </div>
@@ -503,6 +359,7 @@ export default function ProbabilityDrawPage() {
             </div>
             <span className="font-['Space_Grotesk:Bold'] font-bold text-white text-[22px]">{winner}</span>
             <button
+              type="button"
               onClick={startNewGame}
               className="bg-[#10d070] drop-shadow-[0px_4px_0px_#0a7f44] flex h-14 items-center justify-center rounded-[12px] w-full mt-2 cursor-pointer transition-opacity active:opacity-80"
             >
@@ -562,6 +419,7 @@ export default function ProbabilityDrawPage() {
               {KEYS.flat().map((key) => (
                 <button
                   key={key}
+                  type="button"
                   onClick={() => pressKey(key)}
                   className="bg-[#3b3d42] flex h-[60px] items-center justify-center rounded-[8px] cursor-pointer active:bg-[#4e5057] transition-colors"
                 >
@@ -577,13 +435,6 @@ export default function ProbabilityDrawPage() {
                 </button>
               ))}
             </div>
-
-            {/* Hint: shows simplified correct answer below keypad for reference during development — remove in production */}
-            {question && (
-              <div className="pb-2 opacity-0 pointer-events-none select-none">
-                <span className="text-[10px] text-[#333]">{simplifyFrac(question.num, question.den)}</span>
-              </div>
-            )}
           </>
         )}
 
