@@ -1,0 +1,10 @@
+{
+  "description": "This mobile app features a user-friendly interface with a fixed top section for key metrics and a bottom navigation bar, enhancing user experience and accessibility.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
