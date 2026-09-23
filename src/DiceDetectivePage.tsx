@@ -1,70 +1,227 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, Fragment, useCallback, useRef } from "react";
+import {
+  generateDiceQuestion,
+  type DiceQuestion,
+} from "./diceDetectiveGenerator";
 
 const assetPathPrefix = "/assets";
 const imgStarIcon = `${assetPathPrefix}/dd268.svg`;
 const imgTimerIcon = `${assetPathPrefix}/ed88e.svg`;
-const imgArrow = `${assetPathPrefix}/7b676.svg`;
 
-// Correct answers: cells where die1 + die2 = 7
-// Grid is [row=die1][col=die2], 1-indexed
-const CORRECT: Set<string> = new Set(
-  [1,2,3,4,5,6].flatMap(d1 =>
-    [1,2,3,4,5,6].filter(d2 => d1 + d2 === 7).map(d2 => `${d1}-${d2}`)
-  )
-);
+const TOTAL_SECONDS = 120; // 2-minute match timer
+const OPPONENT_THRESHOLDS = [90, 60, 30, 10]; // timeLeft values when opponent gets 1, 2, 3, 4 points
 
-const TOTAL_SECONDS = 23;
+interface DiceCardProps {
+  selected: boolean;
+  isCorrect: boolean;
+  isWrong: boolean;
+  onClick: () => void;
+}
+
+function DiceCard({ selected, isCorrect, isWrong, onClick }: DiceCardProps) {
+  const backBg = isCorrect
+    ? "bg-[#10d070] shadow-[0px_0px_16px_0px_rgba(16,208,112,0.7)]"
+    : isWrong
+    ? "bg-[#ff5768] shadow-[0px_0px_14px_0px_rgba(255,87,104,0.6)]"
+    : "bg-[#5eead4] shadow-[0px_0px_14px_0px_rgba(94,234,212,0.65)]";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="aspect-square w-full relative cursor-pointer select-none focus:outline-none p-0 border-0 bg-transparent"
+      style={{
+        perspective: 600,
+        WebkitTapHighlightColor: "transparent",
+      }}
+    >
+      <div
+        className="w-full h-full relative"
+        style={{
+          transformStyle: "preserve-3d",
+          transition: "transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+          transform: selected ? "rotateY(180deg)" : "rotateY(0deg)",
+        }}
+      >
+        {/* Grey Front Face (Initial State) */}
+        <div
+          className="absolute inset-0 rounded-[10px] sm:rounded-[12px] bg-[#22252a] border border-[#2c3038] shadow-[0px_1px_3px_0px_rgba(0,0,0,0.35)]"
+          style={{
+            backfaceVisibility: "hidden",
+            WebkitBackfaceVisibility: "hidden",
+          }}
+        />
+
+        {/* Back Face (Flipped/Selected State: Cyan / Green / Red) */}
+        <div
+          className={`absolute inset-0 rounded-[10px] sm:rounded-[12px] transition-colors duration-250 ${backBg}`}
+          style={{
+            backfaceVisibility: "hidden",
+            WebkitBackfaceVisibility: "hidden",
+            transform: "rotateY(180deg)",
+          }}
+        />
+      </div>
+    </button>
+  );
+}
 
 export default function DiceDetectivePage() {
-  const navigate = useNavigate();
+  // Question & difficulty state
+  const [difficulty, setDifficulty] = useState(1);
+  const [question, setQuestion] = useState<DiceQuestion>(() => generateDiceQuestion(1));
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [checked, setChecked] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(TOTAL_SECONDS);
-  const [playerScore, setPlayerScore] = useState(0);
 
+  // Visual feedback states
+  const [isCorrect, setIsCorrect] = useState(false);
+  const [isWrongFlash, setIsWrongFlash] = useState(false);
+
+  // Scores & timer
+  const [playerScore, setPlayerScore] = useState(0);
+  const [opponentScore, setOpponentScore] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(TOTAL_SECONDS);
+  const [gameOver, setGameOver] = useState(false);
+
+  // Refs for tracking async state & timers
+  const difficultyRef = useRef(1);
+  const opponentIdxRef = useRef(0);
+  const advancingRef = useRef(false);
+  const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrongFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastQuestionTextRef = useRef(question.text);
+
+  // ── Timer countdown (2:00 -> 0:00) ──
   useEffect(() => {
-    if (timeLeft <= 0) return;
+    if (timeLeft <= 0) {
+      setGameOver(true);
+      return;
+    }
     const t = setInterval(() => setTimeLeft(s => Math.max(0, s - 1)), 1000);
     return () => clearInterval(t);
   }, [timeLeft]);
 
+  // ── Opponent scoring (4 points across match) ──
+  useEffect(() => {
+    if (gameOver) return;
+    while (
+      opponentIdxRef.current < OPPONENT_THRESHOLDS.length &&
+      timeLeft <= OPPONENT_THRESHOLDS[opponentIdxRef.current]
+    ) {
+      opponentIdxRef.current++;
+      setOpponentScore(opponentIdxRef.current);
+    }
+  }, [timeLeft, gameOver]);
+
   const mins = String(Math.floor(timeLeft / 60)).padStart(2, "0");
   const secs = String(timeLeft % 60).padStart(2, "0");
 
+  // ── Reset Game Sequence ──
+  const startNewGame = useCallback(() => {
+    if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
+    if (wrongFlashTimerRef.current) clearTimeout(wrongFlashTimerRef.current);
+
+    advancingRef.current = false;
+    difficultyRef.current = 1;
+    setDifficulty(1);
+    setPlayerScore(0);
+    opponentIdxRef.current = 0;
+    setOpponentScore(0);
+    setTimeLeft(TOTAL_SECONDS);
+    setGameOver(false);
+    setIsCorrect(false);
+    setIsWrongFlash(false);
+    setSelected(new Set());
+
+    const firstQ = generateDiceQuestion(1);
+    lastQuestionTextRef.current = firstQ.text;
+    setQuestion(firstQ);
+  }, []);
+
+  // ── Handle Correct Answer Flow ──
+  const handleCorrect = useCallback(() => {
+    if (advancingRef.current) return;
+    advancingRef.current = true;
+
+    // 1. Selected cards turn GREEN
+    setIsCorrect(true);
+    setIsWrongFlash(false);
+
+    // 2. Award +1 point
+    setPlayerScore(s => s + 1);
+
+    // 3. Keep green state visible briefly, then advance
+    if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
+    transitionTimerRef.current = setTimeout(() => {
+      // Difficulty increases after every correct answer
+      difficultyRef.current += 1;
+      setDifficulty(difficultyRef.current);
+
+      // Generate new question from next difficulty category
+      const nextQ = generateDiceQuestion(difficultyRef.current, lastQuestionTextRef.current);
+      lastQuestionTextRef.current = nextQ.text;
+      setQuestion(nextQ);
+
+      // All cards reset to unselected grey state
+      setSelected(new Set());
+      setIsCorrect(false);
+      advancingRef.current = false;
+    }, 850);
+  }, []);
+
+  // ── Card Toggle with Automatic Verification ──
   function toggleCell(key: string) {
-    if (checked) return;
+    if (gameOver || advancingRef.current) return;
+
     setSelected(prev => {
       const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+
+      // Check if complete candidate set is selected
+      const targetCount = question.correctOutcomes.length;
+      if (next.size === targetCount) {
+        // Verify if all selected keys match the correct outcomes
+        let allCorrect = true;
+        for (const k of next) {
+          if (!question.correctKeys.has(k)) {
+            allCorrect = false;
+            break;
+          }
+        }
+
+        if (allCorrect) {
+          // Exactly the correct set!
+          handleCorrect();
+        } else {
+          // Complete candidate set has errors: briefly indicate incorrect without revealing individual cards
+          setIsWrongFlash(true);
+          if (wrongFlashTimerRef.current) clearTimeout(wrongFlashTimerRef.current);
+          wrongFlashTimerRef.current = setTimeout(() => {
+            setIsWrongFlash(false);
+          }, 500);
+        }
+      } else {
+        setIsWrongFlash(false);
+      }
+
       return next;
     });
   }
 
-  function checkAnswer() {
-    if (checked) return;
-    setChecked(true);
-    // score = number of correct cells selected
-    let correct = 0;
-    selected.forEach(k => { if (CORRECT.has(k)) correct++; });
-    setPlayerScore(correct);
-  }
-
-  function cellStyle(row: number, col: number) {
-    const key = `${row}-${col}`;
-    const isSelected = selected.has(key);
-    const isCorrect = CORRECT.has(key);
-    if (checked) {
-      if (isCorrect) return "selected"; // always show correct in green after check
-      if (isSelected && !isCorrect) return "wrong";
-    }
-    if (isSelected) return "selected";
-    return "idle";
-  }
+  const winner = gameOver
+    ? playerScore > opponentScore
+      ? "You win! 🎉"
+      : playerScore < opponentScore
+      ? "Opponent wins!"
+      : "It's a tie!"
+    : "";
 
   return (
-    <div className="bg-[#121316] w-full min-h-dvh flex flex-col" data-node-id="6:165">
-      <div className="flex flex-1 flex-col justify-between px-5 py-8">
+    <div className="bg-[#121316] w-full min-h-dvh flex flex-col justify-between" data-node-id="6:165">
+      <div className="flex flex-1 flex-col justify-between px-4 sm:px-5 py-6 sm:py-8 max-w-[420px] mx-auto w-full">
 
         {/* TOP: Players + Scores */}
         <div className="flex flex-col gap-4">
@@ -113,101 +270,115 @@ export default function DiceDetectivePage() {
               <div className="h-[12.25px] relative w-[10.5px]">
                 <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgTimerIcon} />
               </div>
-              <span className="font-['Space_Grotesk:Bold'] font-bold text-[#5eead4] text-[12px] tracking-[0.6px] leading-[16px]">
+              <span className={`font-['Space_Grotesk:Bold'] font-bold text-[12px] tracking-[0.6px] leading-[16px] ${timeLeft <= 10 ? "text-[#ff5768]" : "text-[#5eead4]"}`}>
                 {mins}:{secs}
               </span>
             </div>
             <div className="border border-[#272a32] bg-[#181a1f] flex h-[28px] items-center justify-center rounded-full w-[56px]">
-              <span className="font-['Space_Grotesk:Bold'] font-bold text-[#7a7e89] text-[12px] leading-[16px]">0</span>
+              <span className="font-['Space_Grotesk:Bold'] font-bold text-[#7a7e89] text-[12px] leading-[16px]">{opponentScore}</span>
             </div>
           </div>
         </div>
 
-        {/* MIDDLE: Question */}
-        <div className="flex flex-col gap-[3px] items-center px-1 pt-10" data-node-id="6:206">
-          <div className="max-w-[320px] text-center">
-            <p className="font-['Space_Grotesk:Bold'] font-bold text-white text-[16px] leading-[22px]">
-              Two dice are rolled. Select all outcomes where the sum equals 7.
+        {/* MIDDLE: Question Area */}
+        <div className="flex flex-col gap-[6px] items-center px-1 pt-6 pb-2" data-node-id="6:206">
+          <div className="w-full max-w-[340px] text-center min-h-[50px] flex items-center justify-center">
+            <p className="font-['Space_Grotesk:Bold'] font-bold text-white text-[17px] sm:text-[19px] leading-[24px]">
+              {gameOver ? "Time's up!" : question.text}
             </p>
           </div>
-          <p className="font-['Plus_Jakarta_Sans:Medium'] font-medium text-[#7a7e89] text-[11px] text-center leading-[16.5px]">
+          <p className="font-['Plus_Jakarta_Sans:Medium'] font-medium text-[#7a7e89] text-[11px] sm:text-[12px] text-center leading-[16.5px]">
             6×6 Sample Space • Tap cards to flip & select
           </p>
         </div>
 
-        {/* MAIN: 6×6 Grid */}
-        <div className="flex items-center justify-center flex-1 py-4" data-node-id="6:211">
-          <div className="relative" style={{ width: 270 }}>
-            {/* Column labels */}
-            <div className="flex items-center justify-between pl-7 pb-1">
-              {[1,2,3,4,5,6].map(n => (
-                <div key={n} className="w-[40px] text-center">
-                  <span className="font-['Space_Grotesk:Bold'] font-semibold text-[#71717a] text-[11px] leading-[16.5px]">{n}</span>
+        {/* MAIN: 6×6 Grid System */}
+        <div className="flex items-center justify-center flex-1 py-2 w-full" data-node-id="6:211">
+          {gameOver ? (
+            <div className="flex flex-col items-center gap-5 py-4 w-full">
+              <div className="flex items-center justify-center gap-8 w-full">
+                <div className="flex flex-col items-center">
+                  <span className="font-['Space_Grotesk:Bold'] font-bold text-[#5eead4] text-[36px]">{playerScore}</span>
+                  <span className="font-['Space_Grotesk:Bold'] font-bold text-white text-[14px]">You</span>
+                </div>
+                <span className="font-['Space_Grotesk:Bold'] font-bold text-[#7a7e89] text-[20px]">vs</span>
+                <div className="flex flex-col items-center">
+                  <span className="font-['Space_Grotesk:Bold'] font-bold text-[#ff5768] text-[36px]">{opponentScore}</span>
+                  <span className="font-['Space_Grotesk:Bold'] font-bold text-white text-[14px]">Opponent</span>
+                </div>
+              </div>
+              <span className="font-['Space_Grotesk:Bold'] font-bold text-white text-[22px]">{winner}</span>
+              <button
+                type="button"
+                onClick={startNewGame}
+                className="bg-[#10d070] drop-shadow-[0px_4px_0px_#0a7f44] flex h-14 items-center justify-center rounded-[12px] w-full mt-2 cursor-pointer transition-opacity active:opacity-80"
+              >
+                <span className="font-['Space_Grotesk:Bold'] font-bold text-black text-[16px] tracking-[0.4px] leading-[24px]">
+                  NEW GAME
+                </span>
+              </button>
+            </div>
+          ) : (
+            <div
+              className={`grid w-full max-w-[360px] mx-auto transition-transform ${isWrongFlash ? "animate-[shake_0.4s_ease-in-out]" : ""}`}
+              style={{
+                gridTemplateColumns: "22px repeat(6, 1fr)",
+                gap: "7px",
+              }}
+            >
+              {/* Top-left spacer */}
+              <div />
+
+              {/* Column labels (Die 2: 1 to 6) */}
+              {[1, 2, 3, 4, 5, 6].map(col => (
+                <div key={`col-${col}`} className="flex items-center justify-center pb-1">
+                  <span className="font-['Space_Grotesk:Bold'] font-bold text-[#71717a] text-[12px] sm:text-[13px] leading-none select-none">
+                    {col}
+                  </span>
                 </div>
               ))}
-            </div>
-            <div className="flex gap-1">
-              {/* Row labels */}
-              <div className="flex flex-col justify-between py-[14px]" style={{ width: 28 }}>
-                {[1,2,3,4,5,6].map(n => (
-                  <div key={n} className="h-[40px] flex items-center justify-center">
-                    <span className="font-['Space_Grotesk:Bold'] font-semibold text-[#71717a] text-[11px] leading-[16px]">{n}</span>
-                  </div>
-                ))}
-              </div>
-              {/* Grid */}
-              <div
-                className="inline-grid gap-[6px]"
-                style={{ gridTemplateColumns: "repeat(6, 40px)", gridTemplateRows: "repeat(6, 40px)" }}
-              >
-                {[1,2,3,4,5,6].flatMap(row =>
-                  [1,2,3,4,5,6].map(col => {
-                    const key = `${row}-${col}`;
-                    const state = cellStyle(row, col);
-                    return (
-                      <button
-                        key={key}
-                        onClick={() => toggleCell(key)}
-                        className="relative rounded-[12px] size-[40px] cursor-pointer"
-                      >
-                        {/* Back face (selected/correct: cyan glow) */}
-                        {state === "selected" && (
-                          <div className="absolute inset-0 rounded-[12px] bg-[#5eead4] shadow-[0px_0px_12px_0px_rgba(94,234,212,0.6)]" />
-                        )}
-                        {state === "wrong" && (
-                          <div className="absolute inset-0 rounded-[12px] bg-[#ff5768] shadow-[0px_0px_12px_0px_rgba(255,87,104,0.5)]" />
-                        )}
-                        {/* Front face */}
-                        <div
-                          className={`absolute inset-[0_0.33px_0.33px_0] rounded-[12px] shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] transition-opacity duration-150 ${
-                            state === "idle" ? "bg-[#22252a] border border-[#2c3038]" : "opacity-0"
-                          }`}
-                        />
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* BOTTOM: Check Answer */}
-        <button
-          onClick={checkAnswer}
-          disabled={checked}
-          className="bg-[#10d070] drop-shadow-[0px_4px_0px_#0a7f44] flex gap-2 h-14 items-center justify-center rounded-[12px] w-full cursor-pointer disabled:opacity-60"
-          data-node-id="6:161"
-        >
-          <span className="font-['Space_Grotesk:Bold'] font-bold text-black text-[16px] text-center tracking-[0.4px] leading-[24px] whitespace-nowrap">
-            CHECK ANSWER
-          </span>
-          {!checked && (
-            <div className="relative size-[13.333px]">
-              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgArrow} />
+              {/* 6 Rows of (Row Label Die 1 + 6 Cards) */}
+              {[1, 2, 3, 4, 5, 6].map(row => (
+                <Fragment key={`row-group-${row}`}>
+                  {/* Row label (Die 1: 1 to 6) */}
+                  <div className="flex items-center justify-center pr-1 h-full">
+                    <span className="font-['Space_Grotesk:Bold'] font-bold text-[#71717a] text-[12px] sm:text-[13px] leading-none select-none">
+                      {row}
+                    </span>
+                  </div>
+
+                  {/* 6 Cards for this row */}
+                  {[1, 2, 3, 4, 5, 6].map(col => {
+                    const key = `${row}-${col}`;
+                    const isCardSelected = selected.has(key);
+                    return (
+                      <DiceCard
+                        key={key}
+                        selected={isCardSelected}
+                        isCorrect={isCorrect && isCardSelected}
+                        isWrong={isWrongFlash && isCardSelected}
+                        onClick={() => toggleCell(key)}
+                      />
+                    );
+                  })}
+                </Fragment>
+              ))}
             </div>
           )}
-        </button>
+        </div>
+
+        {/* BOTTOM: Subtle Status Bar (Check Answer button removed) */}
+        {!gameOver && (
+          <div className="flex items-center justify-between px-2 pt-2 pb-1 text-[#7a7e89]">
+            <span className="font-['Space_Grotesk:Bold'] font-medium text-[11px] tracking-[0.5px]">
+              Level {difficulty}
+            </span>
+            <span className="font-['Space_Grotesk:Bold'] font-medium text-[11px] tracking-[0.5px]">
+              {selected.size} / {question.correctOutcomes.length} selected
+            </span>
+          </div>
+        )}
 
       </div>
     </div>
