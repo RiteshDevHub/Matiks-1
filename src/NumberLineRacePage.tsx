@@ -15,23 +15,28 @@ const imgClearIcon = `${assetPathPrefix}/737d9.svg`;
 const TOTAL_SECONDS = 120; // 2-minute duel timer
 const OPPONENT_THRESHOLDS = [90, 60, 30, 10]; // timeLeft values when opponent gets 1, 2, 3, 4 points
 
+interface SlotItem {
+  value: string;
+  originChoiceIndex: number;
+}
+
 interface HistoryState {
-  slots: string[];
+  slots: (SlotItem | null)[];
   choices: string[];
 }
 
 export default function NumberLineRacePage() {
   // Question & difficulty state
-  const [difficulty, setDifficulty] = useState(1);
+  const [, setDifficulty] = useState(1);
   const [question, setQuestion] = useState<NumberLineQuestion>(() => generateNumberLineQuestion(1));
 
-  // Current arrangement in the 5 top slots (empty string = unfilled slot)
-  const [slots, setSlots] = useState<string[]>(["", "", "", "", ""]);
-  // Remaining available numbers at bottom
-  const [choices, setChoices] = useState<string[]>(() => question.numbers);
+  // Current arrangement in the 5 top slots (null = unfilled slot)
+  const [slots, setSlots] = useState<(SlotItem | null)[]>([null, null, null, null, null]);
+  // 5 fixed options at bottom (empty string "" = placed/blank)
+  const [choices, setChoices] = useState<string[]>(() => [...question.numbers]);
 
-  // Selected card tracking: can be from available choices or from an existing slot
-  const [selected, setSelected] = useState<{ source: "choice" | "slot"; index: number; value: string } | null>(null);
+  // Selected item: either an empty slot (gets yellow outline) or an available choice (gets filled green state)
+  const [selected, setSelected] = useState<{ type: "choice" | "slot"; index: number } | null>(null);
 
   // Undo / Redo history stacks
   const [undoStack, setUndoStack] = useState<HistoryState[]>([]);
@@ -100,8 +105,8 @@ export default function NumberLineRacePage() {
 
     const firstQ = generateNumberLineQuestion(1);
     setQuestion(firstQ);
-    setSlots(["", "", "", "", ""]);
-    setChoices(firstQ.numbers);
+    setSlots([null, null, null, null, null]);
+    setChoices([...firstQ.numbers]);
   }, []);
 
   // ── Correct Answer Handling ──
@@ -124,8 +129,8 @@ export default function NumberLineRacePage() {
 
       const nextQ = generateNumberLineQuestion(difficultyRef.current, currentQuestion.numbers);
       setQuestion(nextQ);
-      setSlots(["", "", "", "", ""]);
-      setChoices(nextQ.numbers);
+      setSlots([null, null, null, null, null]);
+      setChoices([...nextQ.numbers]);
       setSelected(null);
       setUndoStack([]);
       setRedoStack([]);
@@ -135,16 +140,16 @@ export default function NumberLineRacePage() {
   }, []);
 
   // ── Helper to push to undo stack ──
-  function pushHistory(currentSlots: string[], currentChoices: string[]) {
+  function pushHistory(currentSlots: (SlotItem | null)[], currentChoices: string[]) {
     setUndoStack(prev => [...prev, { slots: [...currentSlots], choices: [...currentChoices] }]);
     setRedoStack([]); // New action invalidates redo stack
   }
 
   // ── Check answer whenever all 5 slots are populated ──
-  function verifyArrangement(newSlots: string[], currentQuestion: NumberLineQuestion) {
-    if (!newSlots.every(s => s !== "")) return;
+  function verifyArrangement(newSlots: (SlotItem | null)[], currentQuestion: NumberLineQuestion) {
+    if (newSlots.some(s => s === null)) return;
 
-    const isMatch = newSlots.every((s, i) => s === currentQuestion.correctOrder[i]);
+    const isMatch = newSlots.every((s, i) => s?.value === currentQuestion.correctOrder[i]);
     if (isMatch) {
       handleCorrect(currentQuestion);
     } else {
@@ -158,23 +163,20 @@ export default function NumberLineRacePage() {
   }
 
   // ── Tap a choice card at the bottom ──
-  function selectChoice(val: string, idx: number) {
+  function selectChoice(optIdx: number) {
     if (gameOver || advancingRef.current) return;
+    const val = choices[optIdx];
+    if (!val) return; // blank slot (already placed)
 
-    if (selected && selected.source === "choice" && selected.value === val) {
-      // Tapping same selected card deselects it
-      setSelected(null);
-      return;
-    }
-
-    if (selected && selected.source === "slot") {
-      // If a slot was selected, and player taps a bottom choice: swap them!
+    // CASE A: An empty top slot is currently selected with yellow outline
+    if (selected && selected.type === "slot") {
+      const slotIdx = selected.index;
       pushHistory(slots, choices);
       const newSlots = [...slots];
       const newChoices = [...choices];
 
-      newSlots[selected.index] = val;
-      newChoices[idx] = selected.value;
+      newSlots[slotIdx] = { value: val, originChoiceIndex: optIdx };
+      newChoices[optIdx] = "";
 
       setSlots(newSlots);
       setChoices(newChoices);
@@ -183,70 +185,91 @@ export default function NumberLineRacePage() {
       return;
     }
 
-    setSelected({ source: "choice", index: idx, value: val });
+    // CASE B: This choice is already selected in filled state -> toggle deselect
+    if (selected && selected.type === "choice" && selected.index === optIdx) {
+      setSelected(null);
+      return;
+    }
+
+    // CASE C: Select this choice (turns into filled green state)
+    setSelected({ type: "choice", index: optIdx });
   }
 
   // ── Tap a slot card at the top ──
   function handleSlotClick(slotIdx: number) {
     if (gameOver || advancingRef.current) return;
 
-    const currentValInSlot = slots[slotIdx];
+    const currentSlot = slots[slotIdx];
 
-    // CASE 1: A bottom choice card is currently selected
-    if (selected && selected.source === "choice") {
+    // CASE 1: The slot is already filled with a placed number
+    if (currentSlot !== null) {
+      // If a bottom choice is selected, replace this slot
+      if (selected && selected.type === "choice") {
+        const choiceIdx = selected.index;
+        const choiceVal = choices[choiceIdx];
+        if (choiceVal) {
+          pushHistory(slots, choices);
+          const newSlots = [...slots];
+          const newChoices = [...choices];
+
+          // Old card returns to its origin position at bottom
+          newChoices[currentSlot.originChoiceIndex] = currentSlot.value;
+          // Selected choice takes this slot
+          newSlots[slotIdx] = { value: choiceVal, originChoiceIndex: choiceIdx };
+          newChoices[choiceIdx] = "";
+
+          setSlots(newSlots);
+          setChoices(newChoices);
+          setSelected(null);
+          verifyArrangement(newSlots, question);
+          return;
+        }
+      }
+
+      // Otherwise, tapping the placed number sends it back to bottom, opening up empty space
       pushHistory(slots, choices);
       const newSlots = [...slots];
-      let newChoices = [...choices];
+      const newChoices = [...choices];
 
-      if (currentValInSlot === "") {
-        // Place in empty slot
-        newSlots[slotIdx] = selected.value;
-        newChoices = newChoices.filter((_, i) => i !== selected.index);
-      } else {
-        // Replace existing card: send old card back to choices, put selected card here
-        newSlots[slotIdx] = selected.value;
-        newChoices[selected.index] = currentValInSlot;
-      }
+      newChoices[currentSlot.originChoiceIndex] = currentSlot.value;
+      newSlots[slotIdx] = null;
 
       setSlots(newSlots);
       setChoices(newChoices);
       setSelected(null);
-      verifyArrangement(newSlots, question);
+      setIsWrongFlash(false);
       return;
     }
 
-    // CASE 2: Another slot was previously selected
-    if (selected && selected.source === "slot") {
-      if (selected.index === slotIdx) {
-        // Tapped the same slot again: return this card back to bottom choices!
+    // CASE 2: The slot is empty
+    // If a bottom choice is selected, place it here!
+    if (selected && selected.type === "choice") {
+      const choiceIdx = selected.index;
+      const choiceVal = choices[choiceIdx];
+      if (choiceVal) {
         pushHistory(slots, choices);
         const newSlots = [...slots];
-        newSlots[slotIdx] = "";
-        const newChoices = [...choices, currentValInSlot];
+        const newChoices = [...choices];
+
+        newSlots[slotIdx] = { value: choiceVal, originChoiceIndex: choiceIdx };
+        newChoices[choiceIdx] = "";
 
         setSlots(newSlots);
         setChoices(newChoices);
         setSelected(null);
+        verifyArrangement(newSlots, question);
         return;
       }
+    }
 
-      // Swap between two slots
-      pushHistory(slots, choices);
-      const newSlots = [...slots];
-      newSlots[slotIdx] = selected.value;
-      newSlots[selected.index] = currentValInSlot;
-
-      setSlots(newSlots);
+    // If this empty slot is already selected (has yellow outline), toggle deselect
+    if (selected && selected.type === "slot" && selected.index === slotIdx) {
       setSelected(null);
-      verifyArrangement(newSlots, question);
       return;
     }
 
-    // CASE 3: Nothing is currently selected
-    if (currentValInSlot !== "") {
-      // Select this slot card to move/swap it
-      setSelected({ source: "slot", index: slotIdx, value: currentValInSlot });
-    }
+    // Otherwise, select this empty slot (gives yellow outline)
+    setSelected({ type: "slot", index: slotIdx });
   }
 
   // ── Undo Action ──
@@ -280,10 +303,10 @@ export default function NumberLineRacePage() {
 
   // ── Clear Action: return all numbers from slots to bottom ──
   function handleClear() {
-    if (slots.every(s => s === "") || gameOver || advancingRef.current) return;
+    if (slots.every(s => s === null) || gameOver || advancingRef.current) return;
 
     pushHistory(slots, choices);
-    setSlots(["", "", "", "", ""]);
+    setSlots([null, null, null, null, null]);
     setChoices([...question.numbers]);
     setSelected(null);
     setIsWrongFlash(false);
@@ -391,9 +414,6 @@ export default function NumberLineRacePage() {
           <p className="font-['Space_Grotesk:Bold'] font-bold text-white text-[18px] sm:text-[20px] leading-[26px]">
             {gameOver ? "Time's up!" : "Arrange numbers from smallest to largest"}
           </p>
-          <p className="font-['Plus_Jakarta_Sans:Medium'] font-medium text-[#7a7e89] text-[11px] sm:text-[12px] leading-[16px]">
-            Least → Greatest • Tap a card to select, then tap slot to place or swap
-          </p>
         </div>
 
         {/* MAIN GAME AREA: Slots & Controls */}
@@ -425,57 +445,43 @@ export default function NumberLineRacePage() {
           <div className="flex flex-1 flex-col justify-around items-center w-full py-4 gap-6" data-node-id="9:402">
 
             {/* 5 Top Slots */}
-            <div className="w-full flex flex-col items-center gap-2">
-              <div
-                className={`flex gap-[6px] sm:gap-2 items-center justify-center w-full transition-transform ${isWrongFlash ? "animate-[shake_0.4s_ease-in-out]" : ""}`}
-              >
-                {slots.map((val, idx) => {
-                  const isFilled = val !== "";
-                  const isSlotSelected = selected?.source === "slot" && selected.index === idx;
+            <div
+              className={`flex gap-[6px] sm:gap-2 items-center justify-center w-full transition-transform ${isWrongFlash ? "animate-[shake_0.4s_ease-in-out]" : ""}`}
+            >
+              {slots.map((slot, idx) => {
+                const isFilled = slot !== null;
+                const isYellowSelected = !isFilled && selected?.type === "slot" && selected.index === idx;
 
-                  // Slot visual styling
-                  let bgStyle = "bg-[#1b3828] border border-[rgba(6,78,59,0.4)]";
-                  if (isCorrect && isFilled) {
-                    bgStyle = "bg-[#10d070] shadow-[0px_0px_16px_0px_rgba(16,208,112,0.7)] text-black";
-                  } else if (isWrongFlash && isFilled) {
-                    bgStyle = "bg-[#ff5768] shadow-[0px_0px_14px_0px_rgba(255,87,104,0.6)] text-white";
-                  } else if (isFilled) {
-                    bgStyle = "bg-[#09b964] drop-shadow-[0px_3px_0px_#06743f] text-[#121316]";
-                  }
+                let slotStyle = "";
+                if (isCorrect && isFilled) {
+                  slotStyle = "bg-[#10d070] shadow-[0px_0px_16px_0px_rgba(16,208,112,0.7)] text-black";
+                } else if (isWrongFlash && isFilled) {
+                  slotStyle = "bg-[#ff5768] shadow-[0px_0px_14px_0px_rgba(255,87,104,0.6)] text-white";
+                } else if (isFilled) {
+                  slotStyle = "bg-[#09b964] drop-shadow-[0px_3px_0px_#06743f] text-[#121316] hover:brightness-105 active:scale-95";
+                } else if (isYellowSelected) {
+                  // Yellow outline state when empty slot is selected
+                  slotStyle = "bg-[#1b3828] border-2 border-[#facc15] shadow-[0px_0px_14px_0px_rgba(250,204,21,0.5)] ring-2 ring-[#facc15]/30 scale-105";
+                } else {
+                  // Unselected empty slot
+                  slotStyle = "bg-[#1b3828] border border-[rgba(6,78,59,0.4)] hover:border-[#28e37e]/60";
+                }
 
-                  const ringStyle = isSlotSelected
-                    ? "ring-2 ring-[#5eead4] ring-offset-2 ring-offset-[#121316] scale-105"
-                    : selected && !isFilled
-                    ? "ring-1 ring-[rgba(40,227,126,0.6)] ring-offset-1 ring-offset-[#121316]"
-                    : "";
-
-                  return (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => handleSlotClick(idx)}
-                      className={`relative rounded-[14px] w-[58px] h-[58px] sm:w-[62px] sm:h-[62px] flex items-center justify-center cursor-pointer transition-all ${bgStyle} ${ringStyle}`}
-                    >
-                      {isFilled ? (
-                        <span className={`font-['Space_Grotesk:Bold'] font-bold text-center leading-tight px-1 select-none ${val.length > 4 ? "text-[14px] sm:text-[15px]" : "text-[16px] sm:text-[18px]"}`}>
-                          {val}
-                        </span>
-                      ) : (
-                        <span className="font-['Space_Grotesk:Bold'] font-bold text-[#2e5d42] text-[14px] select-none">
-                          ?
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Number line arrow indicator */}
-              <div className="flex items-center justify-between w-[290px] sm:w-[320px] px-2 text-[#7a7e89] text-[10px] sm:text-[11px] font-['Space_Grotesk:Bold'] font-medium">
-                <span>Smallest</span>
-                <span>⟶</span>
-                <span>Largest</span>
-              </div>
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSlotClick(idx)}
+                    className={`relative rounded-[14px] w-[58px] h-[58px] sm:w-[62px] sm:h-[62px] flex items-center justify-center cursor-pointer transition-all ${slotStyle}`}
+                  >
+                    {isFilled && (
+                      <span className={`font-['Space_Grotesk:Bold'] font-bold text-center leading-tight px-1 select-none ${slot.value.length > 4 ? "text-[14px] sm:text-[15px]" : "text-[16px] sm:text-[18px]"}`}>
+                        {slot.value}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Controls: Undo, Clear, Redo */}
@@ -497,7 +503,7 @@ export default function NumberLineRacePage() {
               <button
                 type="button"
                 onClick={handleClear}
-                disabled={slots.every(s => s === "")}
+                disabled={slots.every(s => s === null)}
                 className="bg-[#171717] border-2 border-[#727272] drop-shadow-[0px_3px_0px_#727272] flex gap-2 items-center justify-center px-[16px] py-[12px] rounded-[12px] cursor-pointer disabled:opacity-40 disabled:cursor-default active:translate-y-[1px] transition-all"
               >
                 <div className="relative size-[16px]">
@@ -523,34 +529,50 @@ export default function NumberLineRacePage() {
             </div>
 
             {/* BOTTOM: Available Choice Cards Tray */}
-            <div className="flex flex-col items-center gap-2 w-full">
-              <div className="flex flex-wrap gap-2 sm:gap-3 items-center justify-center w-full min-h-[64px]" data-node-id="9:425">
-                {choices.map((val, idx) => {
-                  const isChoiceSelected = selected?.source === "choice" && selected.index === idx;
+            <div className="flex flex-wrap gap-2 sm:gap-3 items-center justify-center w-full min-h-[64px]" data-node-id="9:425">
+              {choices.map((val, idx) => {
+                if (!val) {
+                  // Blank / empty placeholder tile when number is placed
+                  return (
+                    <div
+                      key={idx}
+                      className="rounded-[14px] w-[58px] h-[58px] sm:w-[62px] sm:h-[62px] bg-[#15171b] border border-[#23262d] transition-all"
+                    />
+                  );
+                }
+
+                const isFilledSelected = selected?.type === "choice" && selected.index === idx;
+
+                if (isFilledSelected) {
+                  // Filled state when selected from stroke state
                   return (
                     <button
-                      key={`${val}-${idx}`}
+                      key={idx}
                       type="button"
-                      onClick={() => selectChoice(val, idx)}
-                      className={`bg-[#1a1c20] border-[0.875px] drop-shadow-[0px_4.375px_0px_#1bb967] flex items-center justify-center p-[2px] rounded-[14px] w-[58px] h-[58px] sm:w-[62px] sm:h-[62px] transition-all cursor-pointer ${
-                        isChoiceSelected
-                          ? "border-[#5eead4] ring-2 ring-[#5eead4] ring-offset-2 ring-offset-[#121316] scale-105"
-                          : "border-[#28e37e] hover:border-[#5eead4]"
-                      }`}
+                      onClick={() => selectChoice(idx)}
+                      className="bg-[#10d070] drop-shadow-[0px_4px_0px_#0a7f44] flex items-center justify-center p-[2px] rounded-[14px] w-[58px] h-[58px] sm:w-[62px] sm:h-[62px] transition-all cursor-pointer scale-105 active:scale-95"
                     >
-                      <span className={`font-['Space_Grotesk:Medium'] font-medium text-white text-center leading-tight px-1 select-none ${val.length > 4 ? "text-[14px] sm:text-[15px]" : "text-[16px] sm:text-[18px]"}`}>
+                      <span className={`font-['Space_Grotesk:Bold'] font-bold text-[#121316] text-center leading-tight px-1 select-none ${val.length > 4 ? "text-[14px] sm:text-[15px]" : "text-[16px] sm:text-[18px]"}`}>
                         {val}
                       </span>
                     </button>
                   );
-                })}
-              </div>
+                }
 
-              {/* Level indicator */}
-              <div className="flex items-center justify-between w-full px-4 text-[#7a7e89] text-[11px] font-['Space_Grotesk:Bold']">
-                <span>Level {difficulty}</span>
-                <span>{slots.filter(s => s !== "").length} / 5 placed</span>
-              </div>
+                // Normal stroke state
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => selectChoice(idx)}
+                    className="bg-[#1a1c20] border-[0.875px] border-[#28e37e] drop-shadow-[0px_4.375px_0px_#1bb967] flex items-center justify-center p-[2px] rounded-[14px] w-[58px] h-[58px] sm:w-[62px] sm:h-[62px] transition-all cursor-pointer hover:border-[#5eead4] active:scale-95"
+                  >
+                    <span className={`font-['Space_Grotesk:Medium'] font-medium text-white text-center leading-tight px-1 select-none ${val.length > 4 ? "text-[14px] sm:text-[15px]" : "text-[16px] sm:text-[18px]"}`}>
+                      {val}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
 
           </div>
