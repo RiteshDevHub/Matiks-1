@@ -1,5 +1,6 @@
-// Sequence Builder game
 import { useState, useEffect } from "react";
+import VictoryScreen from "./VictoryScreen";
+import LossScreen from "./LossScreen";
 
 const assetPathPrefix = "/assets";
 const imgStarIcon      = `${assetPathPrefix}/dd268.svg`;
@@ -23,7 +24,11 @@ export default function SequenceBuilderPage() {
   const [timeLeft, setTimeLeft]     = useState(TOTAL_SECONDS);
 
   useEffect(() => {
-    if (timeLeft <= 0 || done) return;
+    if (done) return;
+    if (timeLeft <= 0) {
+      setDone(true);
+      return;
+    }
     const t = setInterval(() => setTimeLeft(s => Math.max(0, s - 1)), 1000);
     return () => clearInterval(t);
   }, [timeLeft, done]);
@@ -53,6 +58,41 @@ export default function SequenceBuilderPage() {
     setInput("");
     if (isCorrect) setPlayerScore(s => s + 1);
     if (newFilled.length >= ANSWERS.length) setDone(true);
+  }
+
+  function startNewGame() {
+    setInput("");
+    setFilled([]);
+    setSlotStates([]);
+    setDone(false);
+    setPlayerScore(0);
+    setTimeLeft(TOTAL_SECONDS);
+  }
+
+  if (done) {
+    if (playerScore >= 1) {
+      return (
+        <VictoryScreen
+          playerScore={playerScore}
+          opponentScore={0}
+          onRematch={startNewGame}
+          flows={2}
+          grinds={playerScore}
+          chokes={0}
+        />
+      );
+    } else {
+      return (
+        <LossScreen
+          playerScore={playerScore}
+          opponentScore={1}
+          onRematch={startNewGame}
+          flows={0}
+          grinds={0}
+          chokes={2}
+        />
+      );
+    }
   }
 
   // Build the 5 display tiles

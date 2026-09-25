@@ -8,6 +8,8 @@ import {
   RANK_LBL,
   SUIT_SYM,
 } from "./pokerOddsGenerator";
+import VictoryScreen from "./VictoryScreen";
+import LossScreen from "./LossScreen";
 
 const assetPathPrefix  = "/assets";
 const imgStarIcon      = `${assetPathPrefix}/dd268.svg`;
@@ -362,6 +364,32 @@ export default function PokerOddsPage() {
     : playerScore < opponentScore ? "Opponent wins!"
     : "It's a tie!"
     : "";
+
+  if (gameOver) {
+    if (playerScore >= opponentScore) {
+      return (
+        <VictoryScreen
+          playerScore={playerScore}
+          opponentScore={opponentScore}
+          onRematch={() => startNewRound(true)}
+          flows={Math.max(1, Math.floor(playerScore / 2))}
+          grinds={playerScore}
+          chokes={Math.max(0, 4 - playerScore)}
+        />
+      );
+    } else {
+      return (
+        <LossScreen
+          playerScore={playerScore}
+          opponentScore={opponentScore}
+          onRematch={() => startNewRound(true)}
+          flows={Math.max(0, Math.floor(playerScore / 2))}
+          grinds={playerScore}
+          chokes={Math.max(1, 4 - playerScore)}
+        />
+      );
+    }
+  }
 
   return (
     <div className="w-full min-h-dvh flex flex-col gap-0 items-center pt-8 px-5"

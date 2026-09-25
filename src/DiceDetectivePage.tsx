@@ -3,6 +3,8 @@ import {
   generateDiceQuestion,
   type DiceQuestion,
 } from "./diceDetectiveGenerator";
+import VictoryScreen from "./VictoryScreen";
+import LossScreen from "./LossScreen";
 
 const assetPathPrefix = "/assets";
 const imgStarIcon = `${assetPathPrefix}/dd268.svg`;
@@ -218,6 +220,32 @@ export default function DiceDetectivePage() {
       ? "Opponent wins!"
       : "It's a tie!"
     : "";
+
+  if (gameOver) {
+    if (playerScore >= opponentScore) {
+      return (
+        <VictoryScreen
+          playerScore={playerScore}
+          opponentScore={opponentScore}
+          onRematch={startNewGame}
+          flows={Math.max(1, Math.floor(playerScore / 2))}
+          grinds={playerScore}
+          chokes={Math.max(0, 4 - playerScore)}
+        />
+      );
+    } else {
+      return (
+        <LossScreen
+          playerScore={playerScore}
+          opponentScore={opponentScore}
+          onRematch={startNewGame}
+          flows={Math.max(0, Math.floor(playerScore / 2))}
+          grinds={playerScore}
+          chokes={Math.max(1, 4 - playerScore)}
+        />
+      );
+    }
+  }
 
   return (
     <div className="bg-[#121316] w-full min-h-dvh flex flex-col justify-between" data-node-id="6:165">

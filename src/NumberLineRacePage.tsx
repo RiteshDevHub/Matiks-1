@@ -3,6 +3,8 @@ import {
   generateNumberLineQuestion,
   type NumberLineQuestion,
 } from "./numberLineGenerator";
+import VictoryScreen from "./VictoryScreen";
+import LossScreen from "./LossScreen";
 
 const assetPathPrefix = "/assets";
 const imgStarIcon  = `${assetPathPrefix}/dd268.svg`;
@@ -294,6 +296,32 @@ export default function NumberLineRacePage() {
       ? "Opponent wins!"
       : "It's a tie!"
     : "";
+
+  if (gameOver) {
+    if (playerScore >= opponentScore) {
+      return (
+        <VictoryScreen
+          playerScore={playerScore}
+          opponentScore={opponentScore}
+          onRematch={startNewGame}
+          flows={Math.max(1, Math.floor(playerScore / 2))}
+          grinds={playerScore}
+          chokes={Math.max(0, 4 - playerScore)}
+        />
+      );
+    } else {
+      return (
+        <LossScreen
+          playerScore={playerScore}
+          opponentScore={opponentScore}
+          onRematch={startNewGame}
+          flows={Math.max(0, Math.floor(playerScore / 2))}
+          grinds={playerScore}
+          chokes={Math.max(1, 4 - playerScore)}
+        />
+      );
+    }
+  }
 
   return (
     <div

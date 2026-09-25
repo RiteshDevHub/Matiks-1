@@ -7,6 +7,8 @@ import NumberLineRacePage from "./NumberLineRacePage";
 import SequenceBuilderPage from "./SequenceBuilderPage";
 import ProbabilityDrawPage from "./ProbabilityDrawPage";
 import PokerOddsPage from "./PokerOddsPage";
+import VictoryScreen from "./VictoryScreen";
+import LossScreen from "./LossScreen";
 
 function GamePlayRouter() {
   const { gameId } = useParams<{ gameId: string }>();
@@ -35,6 +37,26 @@ export default function App() {
       <Route path="/game/:gameId" element={<GameDetailPage />} />
       <Route path="/game/:gameId/searching" element={<SearchingPage />} />
       <Route path="/game/:gameId/play" element={<GamePlayRouter />} />
+      <Route
+        path="/victory"
+        element={
+          <VictoryScreen
+            playerScore={7}
+            opponentScore={2}
+            onRematch={() => window.history.back()}
+          />
+        }
+      />
+      <Route
+        path="/loss"
+        element={
+          <LossScreen
+            playerScore={2}
+            opponentScore={7}
+            onRematch={() => window.history.back()}
+          />
+        }
+      />
     </Routes>
   );
 }
