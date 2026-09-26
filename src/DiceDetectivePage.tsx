@@ -10,8 +10,8 @@ const assetPathPrefix = "/assets";
 const imgStarIcon = `${assetPathPrefix}/dd268.svg`;
 const imgTimerIcon = `${assetPathPrefix}/ed88e.svg`;
 
-const TOTAL_SECONDS = 120; // 2-minute match timer
-const OPPONENT_THRESHOLDS = [90, 60, 30, 10]; // timeLeft values when opponent gets 1, 2, 3, 4 points
+const TOTAL_SECONDS = 60; // 1-minute match timer
+const OPPONENT_THRESHOLDS = [45, 30, 15, 5]; // timeLeft values when opponent gets 1, 2, 3, 4 points
 
 interface DiceCardProps {
   selected: boolean;

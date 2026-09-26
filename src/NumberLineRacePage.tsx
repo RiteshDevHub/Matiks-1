@@ -12,8 +12,8 @@ const imgTimerIcon = `${assetPathPrefix}/ed88e.svg`;
 const imgUndoArrow = `${assetPathPrefix}/675a8.svg`;
 const imgClearIcon = `${assetPathPrefix}/737d9.svg`;
 
-const TOTAL_SECONDS = 120; // 2-minute duel timer
-const OPPONENT_THRESHOLDS = [90, 60, 30, 10]; // timeLeft values when opponent gets 1, 2, 3, 4 points
+const TOTAL_SECONDS = 60; // 1-minute duel timer
+const OPPONENT_THRESHOLDS = [45, 30, 15, 5]; // timeLeft values when opponent gets 1, 2, 3, 4 points
 
 interface SlotItem {
   value: string;

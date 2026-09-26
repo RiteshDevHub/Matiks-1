@@ -37,8 +37,8 @@ function toBallCounts(balls: BallConfig): BallCounts {
 }
 
 // ── Constants ──
-const GAME_SECONDS = 120; // 2-minute game timer
-const OPPONENT_THRESHOLDS = [90, 60, 30, 10]; // timeLeft values when opponent reaches 1, 2, 3, 4 points
+const GAME_SECONDS = 60; // 1-minute game timer
+const OPPONENT_THRESHOLDS = [45, 30, 15, 5]; // timeLeft values when opponent reaches 1, 2, 3, 4 points
 
 const KEYS = [
   ["1", "2", "3"],
