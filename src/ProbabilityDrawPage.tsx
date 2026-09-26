@@ -285,27 +285,28 @@ export default function ProbabilityDrawPage() {
   // ══════════════════════════════════════════════════════
   return (
     <div
-      className="w-full min-h-dvh flex flex-col items-center"
+      className="w-full min-h-dvh flex flex-col justify-between items-center"
       style={{ background: "rgb(18,19,22)" }}
       data-node-id="11:554"
     >
-      {/* Top area: physics canvas as background, HUD + question overlaid */}
-      <div className="relative w-full flex-1 min-h-[200px]">
-        {/* Physics canvas — fills entire top area */}
-        <div
-          ref={ballsContainerRef}
-          className="absolute inset-0 overflow-hidden"
-          data-node-id="11:594"
-        >
-          {ballsDims.w > 0 && ballsDims.h > 0 && (
-            <PhysicsBalls key={gameKey} width={ballsDims.w} height={ballsDims.h} balls={roundBalls} />
-          )}
-        </div>
+      <div className="flex flex-1 flex-col justify-between items-center max-w-[420px] w-full px-4 sm:px-5 py-6 sm:py-8">
+        {/* Top area: physics canvas as background, HUD + question overlaid */}
+        <div className="relative w-full flex-1 min-h-[200px]">
+          {/* Physics canvas — fills centered gameplay area */}
+          <div
+            ref={ballsContainerRef}
+            className="absolute inset-0 overflow-hidden rounded-[16px]"
+            data-node-id="11:594"
+          >
+            {ballsDims.w > 0 && ballsDims.h > 0 && (
+              <PhysicsBalls key={gameKey} width={ballsDims.w} height={ballsDims.h} balls={roundBalls} />
+            )}
+          </div>
 
-        {/* Overlaid HUD + Question (pointer-events-none so swipes pass through to canvas) */}
-        <div className="relative z-10 flex flex-col gap-[6px] items-center pt-8 px-5 pointer-events-none">
-          {/* TOP: Header HUD */}
-          <div className="flex flex-col gap-4 h-[84px] items-start pt-1 w-full pointer-events-auto">
+          {/* Overlaid HUD + Question (pointer-events-none so swipes pass through to canvas) */}
+          <div className="relative z-10 flex flex-col gap-[6px] items-center pointer-events-none w-full">
+            {/* TOP: Header HUD */}
+            <div className="flex flex-col gap-4 h-[84px] items-start pt-1 w-full pointer-events-auto">
             {/* Players row */}
             <div className="flex items-center justify-between w-full">
               <div className="flex gap-2 items-center">
@@ -468,5 +469,6 @@ export default function ProbabilityDrawPage() {
 
       </div>
     </div>
+  </div>
   );
 }

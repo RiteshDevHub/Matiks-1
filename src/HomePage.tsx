@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { GAMES } from "./GameDetailPage";
 
@@ -17,19 +18,21 @@ const imgSvg1 = `${assetPathPrefix}/6f825.svg`;
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const [selectedCategory, setSelectedCategory] = useState<"math" | "puzzle" | "memory" | "logic">("math");
 
   return (
     <div
-      className="relative w-full min-h-dvh flex flex-col"
-      style={{ background: "rgb(0,0,0)" }}
+      className="relative w-full min-h-dvh flex flex-col items-center"
+      style={{ background: "rgb(18, 19, 22)" }}
       data-node-id="1:3"
     >
       {/* Fixed top: Player Stats Bar */}
       <div
-        className="fixed top-0 left-0 right-0 z-50 bg-black flex items-center justify-between px-4 py-2"
+        className="fixed top-0 left-0 right-0 z-50 bg-[#121316]/95 backdrop-blur-[6px] border-b border-[#232630]/60 flex justify-center w-full"
         data-node-id="1:165"
       >
-        <div className="flex items-center" data-node-id="1:166">
+        <div className="w-full max-w-[420px] mx-auto flex items-center justify-between px-4 py-2">
+          <div className="flex items-center" data-node-id="1:166">
           {/* Token Pill */}
           <div
             className="bg-[#1b1d23] border border-[#2b2f3b] drop-shadow-[0px_1px_1px_rgba(0,0,0,0.05)] flex items-center px-[13px] py-[7px] rounded-full"
@@ -100,12 +103,13 @@ export default function HomePage() {
           <div className="relative size-[20px]">
             <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgSvg1} />
           </div>
+          </div>
         </div>
       </div>
 
       {/* Scrollable main content */}
-      <div className="flex-1 overflow-y-auto pt-[56px] pb-[74px]">
-        <div className="flex flex-col gap-6 px-4 py-6" data-node-id="1:4">
+      <div className="flex-1 w-full flex flex-col items-center overflow-y-auto pt-[56px] pb-[74px]">
+        <div className="flex flex-col gap-6 px-4 py-6 w-full max-w-[420px] mx-auto" data-node-id="1:4">
 
           {/* Section - Game Mode Categories */}
           <div className="flex flex-col gap-3" data-node-id="1:5">
@@ -119,14 +123,26 @@ export default function HomePage() {
             </div>
             <div className="flex gap-3 justify-center" data-node-id="1:8">
 
-              {/* Category 1: Math (ACTIVE) */}
-              <div className="flex flex-1 flex-col items-center min-w-0" data-node-id="1:9">
+              {/* Category 1: Math */}
+              <button
+                type="button"
+                onClick={() => setSelectedCategory("math")}
+                className="flex flex-1 flex-col items-center min-w-0 cursor-pointer text-left"
+                data-node-id="1:9"
+              >
                 <div
-                  className="relative bg-[#f5c400] flex flex-col gap-2 h-[72px] items-center pb-[22px] pt-4 px-[10px] rounded-[12px] w-full"
+                  className={`relative flex flex-col items-center justify-start pt-[10px] pb-[4px] rounded-[12px] size-[72px] transition-all ${
+                    selectedCategory === "math"
+                      ? "bg-[#f5c400]"
+                      : "bg-[#1b1d23] border border-[#2b2f3b] drop-shadow-[0px_1px_1px_rgba(0,0,0,0.05)]"
+                  }`}
                   data-node-id="1:10"
                 >
-                  {/* Active border */}
-                  <div className="absolute border-2 border-[#f5c400] h-[80px] rounded-[16px] top-[-4px] w-[88px]" />
+                  {/* Active border with consistent relative gap */}
+                  {selectedCategory === "math" && (
+                    <div className="absolute -inset-[4px] rounded-[16px] border-2 border-[#f5c400] pointer-events-none" />
+                  )}
+
                   {/* Icon */}
                   <div className="border-2 border-black rounded-[4px] size-[28px] relative">
                     <div className="overflow-clip relative rounded-[inherit] size-full">
@@ -144,85 +160,124 @@ export default function HomePage() {
                       </div>
                     </div>
                   </div>
+
                   {/* Rating badge */}
-                  <div className="absolute -translate-x-1/2 bottom-0 left-1/2" data-node-id="1:21">
-                    <div className="relative flex flex-col items-start px-1 py-[2px]">
-                      <div className="absolute -translate-x-1/2 -translate-y-1/2 h-[18px] left-[calc(50%-0.2px)] top-1/2 w-[54px]">
-                        <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgRectangle2} />
-                      </div>
-                      <span
-                        className="font-['JetBrains_Mono:ExtraBold'] font-extrabold text-[#f5c400] text-[11px] leading-[13.75px] whitespace-nowrap relative z-10"
-                        data-node-id="1:23"
-                      >
-                        1035
-                      </span>
-                    </div>
+                  <div className="absolute -translate-x-1/2 bottom-0 left-1/2 flex items-center justify-center h-[18px] w-[54px]" data-node-id="1:21">
+                    <img alt="" className="absolute inset-0 size-full" src={imgRectangle2} />
+                    <span
+                      className="font-['JetBrains_Mono:ExtraBold'] font-extrabold text-[#f5c400] text-[11px] leading-[13.75px] whitespace-nowrap relative z-10 pt-[2px]"
+                      data-node-id="1:23"
+                    >
+                      1035
+                    </span>
                   </div>
                 </div>
                 <div className="pt-2" data-node-id="1:25">
                   <p
-                    className="font-['Space_Grotesk:Bold'] font-extrabold text-[#f5c400] text-[11px] tracking-[0.55px] uppercase leading-[16.5px] whitespace-nowrap"
+                    className={`font-['Space_Grotesk:Bold'] font-extrabold text-[11px] tracking-[0.55px] uppercase leading-[16.5px] whitespace-nowrap ${
+                      selectedCategory === "math" ? "text-[#f5c400]" : "text-[#8e93a0]"
+                    }`}
                     data-node-id="1:26"
                   >
                     MATH
                   </p>
                 </div>
-              </div>
+              </button>
 
               {/* Category 2: Puzzle */}
-              <div className="flex flex-1 flex-col items-center min-w-0" data-node-id="1:27">
+              <button
+                type="button"
+                onClick={() => setSelectedCategory("puzzle")}
+                className="flex flex-1 flex-col items-center min-w-0 cursor-pointer text-left"
+                data-node-id="1:27"
+              >
                 <div
-                  className="bg-[#1b1d23] border border-[#2b2f3b] drop-shadow-[0px_1px_1px_rgba(0,0,0,0.05)] flex items-center justify-center px-[13px] py-[23px] rounded-[12px] size-[72px]"
+                  className={`relative flex items-center justify-center rounded-[12px] size-[72px] transition-all ${
+                    selectedCategory === "puzzle"
+                      ? "bg-[#f5c400]"
+                      : "bg-[#1b1d23] border border-[#2b2f3b] drop-shadow-[0px_1px_1px_rgba(0,0,0,0.05)]"
+                  }`}
                   data-node-id="1:28"
                 >
+                  {selectedCategory === "puzzle" && (
+                    <div className="absolute -inset-[4px] rounded-[16px] border-2 border-[#f5c400] pointer-events-none" />
+                  )}
                   <div className="relative w-[28px]">
                     <div
                       className="grid grid-cols-2 gap-[1.87px]"
                       style={{ gridTemplateRows: "13.07px 13.07px" }}
                     >
-                      <div className="bg-[#10d070] rounded-[3.733px] size-[13.067px]" />
-                      <div className="border-[#10d070] border-[1.4px] border-solid rounded-[3.733px] size-[13.067px]" />
-                      <div className="border-[#10d070] border-[1.4px] border-solid rounded-[3.733px] size-[13.067px]" />
-                      <div className="bg-[#10d070] rounded-[3.733px] size-[13.067px]" />
+                      <div className={`rounded-[3.733px] size-[13.067px] ${selectedCategory === "puzzle" ? "bg-black" : "bg-[#10d070]"}`} />
+                      <div className={`border-[1.4px] border-solid rounded-[3.733px] size-[13.067px] ${selectedCategory === "puzzle" ? "border-black" : "border-[#10d070]"}`} />
+                      <div className={`border-[1.4px] border-solid rounded-[3.733px] size-[13.067px] ${selectedCategory === "puzzle" ? "border-black" : "border-[#10d070]"}`} />
+                      <div className={`rounded-[3.733px] size-[13.067px] ${selectedCategory === "puzzle" ? "bg-black" : "bg-[#10d070]"}`} />
                     </div>
                   </div>
                 </div>
                 <div className="pt-2">
                   <p
-                    className="font-['Space_Grotesk:Bold'] font-bold text-[#8e93a0] text-[11px] tracking-[0.55px] uppercase leading-[16.5px] whitespace-nowrap"
+                    className={`font-['Space_Grotesk:Bold'] font-bold text-[11px] tracking-[0.55px] uppercase leading-[16.5px] whitespace-nowrap ${
+                      selectedCategory === "puzzle" ? "text-[#f5c400]" : "text-[#8e93a0]"
+                    }`}
                     data-node-id="1:35"
                   >
                     PUZZLE
                   </p>
                 </div>
-              </div>
+              </button>
 
               {/* Category 3: Memory */}
-              <div className="flex flex-1 flex-col items-center min-w-0" data-node-id="1:36">
+              <button
+                type="button"
+                onClick={() => setSelectedCategory("memory")}
+                className="flex flex-1 flex-col items-center min-w-0 cursor-pointer text-left"
+                data-node-id="1:36"
+              >
                 <div
-                  className="bg-[#1b1d23] border border-[#2b2f3b] drop-shadow-[0px_1px_1px_rgba(0,0,0,0.05)] flex items-center justify-center px-[13px] py-[26px] rounded-[12px] size-[72px]"
+                  className={`relative flex items-center justify-center rounded-[12px] size-[72px] transition-all ${
+                    selectedCategory === "memory"
+                      ? "bg-[#f5c400]"
+                      : "bg-[#1b1d23] border border-[#2b2f3b] drop-shadow-[0px_1px_1px_rgba(0,0,0,0.05)]"
+                  }`}
                   data-node-id="1:37"
                 >
+                  {selectedCategory === "memory" && (
+                    <div className="absolute -inset-[4px] rounded-[16px] border-2 border-[#f5c400] pointer-events-none" />
+                  )}
                   <div className="relative size-[28px]">
                     <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgOverlappingCyanRoundedSquareIcon} />
                   </div>
                 </div>
                 <div className="pt-2">
                   <p
-                    className="font-['Space_Grotesk:Bold'] font-bold text-[#8e93a0] text-[11px] tracking-[0.55px] uppercase leading-[16.5px] whitespace-nowrap"
+                    className={`font-['Space_Grotesk:Bold'] font-bold text-[11px] tracking-[0.55px] uppercase leading-[16.5px] whitespace-nowrap ${
+                      selectedCategory === "memory" ? "text-[#f5c400]" : "text-[#8e93a0]"
+                    }`}
                     data-node-id="1:44"
                   >
                     MEMORY
                   </p>
                 </div>
-              </div>
+              </button>
 
               {/* Category 4: Logic */}
-              <div className="flex flex-1 flex-col items-center min-w-0" data-node-id="1:45">
+              <button
+                type="button"
+                onClick={() => setSelectedCategory("logic")}
+                className="flex flex-1 flex-col items-center min-w-0 cursor-pointer text-left"
+                data-node-id="1:45"
+              >
                 <div
-                  className="bg-[#1b1d23] border border-[#2b2f3b] drop-shadow-[0px_1px_1px_rgba(0,0,0,0.05)] flex items-center justify-center px-[13px] py-[26px] rounded-[12px] size-[72px]"
+                  className={`relative flex items-center justify-center rounded-[12px] size-[72px] transition-all ${
+                    selectedCategory === "logic"
+                      ? "bg-[#f5c400]"
+                      : "bg-[#1b1d23] border border-[#2b2f3b] drop-shadow-[0px_1px_1px_rgba(0,0,0,0.05)]"
+                  }`}
                   data-node-id="1:46"
                 >
+                  {selectedCategory === "logic" && (
+                    <div className="absolute -inset-[4px] rounded-[16px] border-2 border-[#f5c400] pointer-events-none" />
+                  )}
                   <div className="relative size-[28px]">
                     <div className="relative size-full">
                       <div className="absolute bg-[#ff4f8b] left-0 rounded-full size-[18.667px] top-0" />
@@ -232,13 +287,15 @@ export default function HomePage() {
                 </div>
                 <div className="pt-2">
                   <p
-                    className="font-['Space_Grotesk:Bold'] font-bold text-[#8e93a0] text-[11px] tracking-[0.55px] uppercase leading-[16.5px] whitespace-nowrap"
+                    className={`font-['Space_Grotesk:Bold'] font-bold text-[11px] tracking-[0.55px] uppercase leading-[16.5px] whitespace-nowrap ${
+                      selectedCategory === "logic" ? "text-[#f5c400]" : "text-[#8e93a0]"
+                    }`}
                     data-node-id="1:52"
                   >
                     LOGIC
                   </p>
                 </div>
-              </div>
+              </button>
 
             </div>
           </div>
@@ -291,10 +348,10 @@ export default function HomePage() {
 
       {/* Fixed bottom: Navigation Bar */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-50 backdrop-blur-[6px] bg-[rgba(20,21,25,0.95)] border-t border-[#232630] pb-3 pt-[13px] px-2"
+        className="fixed bottom-0 left-0 right-0 z-50 backdrop-blur-[6px] bg-[rgba(20,21,25,0.95)] border-t border-[#232630] pb-3 pt-[13px] px-2 flex justify-center w-full"
         data-node-id="1:114"
       >
-        <div className="flex items-start justify-between w-full h-[49px]">
+        <div className="flex items-start justify-between w-full max-w-[420px] mx-auto h-[49px]">
 
           {/* Arena (Active) */}
           <div className="flex flex-col items-center flex-1" data-node-id="1:116">

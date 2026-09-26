@@ -308,12 +308,13 @@ export default function SequenceBuilderPage() {
 
   return (
     <div
-      className="w-full min-h-dvh flex flex-col gap-[17px] items-center pt-8 px-5"
+      className="w-full min-h-dvh flex flex-col justify-between items-center"
       style={{ background: "rgb(18,19,22)" }}
       data-node-id="9:445"
     >
-      {/* TOP: Header HUD */}
-      <div className="flex flex-col gap-4 h-[84px] items-start pt-1 w-full" data-node-id="9:446">
+      <div className="flex flex-1 flex-col justify-between items-center max-w-[420px] w-full px-4 sm:px-5 py-6 sm:py-8">
+        {/* TOP: Header HUD */}
+        <div className="flex flex-col gap-4 h-[84px] items-start pt-1 w-full" data-node-id="9:446">
         <div className="flex items-center justify-between w-full">
           <div className="flex gap-2 items-center">
             <div className="bg-[rgba(34,211,238,0.8)] flex items-center justify-center p-[2px] rounded-[12px] shadow-[0px_0px_10px_0px_rgba(56,232,222,0.25)] size-[36px]">
@@ -460,5 +461,6 @@ export default function SequenceBuilderPage() {
         </div>
       </div>
     </div>
+  </div>
   );
 }

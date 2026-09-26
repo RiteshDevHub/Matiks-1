@@ -392,12 +392,15 @@ export default function PokerOddsPage() {
   }
 
   return (
-    <div className="w-full min-h-dvh flex flex-col gap-0 items-center pt-8 px-5"
-      style={{ background:"rgb(18,19,22)" }} data-node-id="22:32">
-
-      {/* ── HUD ── */}
-      <div className="flex flex-col gap-4 h-[84px] items-start pt-1 w-full shrink-0">
-        <div className="flex items-center justify-between w-full">
+    <div
+      className="w-full min-h-dvh flex flex-col justify-between items-center"
+      style={{ background: "rgb(18,19,22)" }}
+      data-node-id="22:32"
+    >
+      <div className="flex flex-1 flex-col justify-between items-center max-w-[420px] w-full px-4 sm:px-5 py-6 sm:py-8">
+        {/* ── HUD ── */}
+        <div className="flex flex-col gap-4 h-[84px] items-start pt-1 w-full shrink-0">
+          <div className="flex items-center justify-between w-full">
           <div className="flex gap-2 items-center">
             <div className="bg-[rgba(34,211,238,0.8)] flex items-center justify-center p-[2px] rounded-[12px] shadow-[0px_0px_10px_0px_rgba(56,232,222,0.25)] size-[36px]">
               <div className="bg-[#ff4f8b] flex flex-1 flex-col h-full items-center justify-center overflow-clip rounded-[9px]">
@@ -581,5 +584,6 @@ export default function PokerOddsPage() {
         )}
       </div>
     </div>
+  </div>
   );
 }

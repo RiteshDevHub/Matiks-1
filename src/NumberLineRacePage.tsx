@@ -348,11 +348,11 @@ export default function NumberLineRacePage() {
 
   return (
     <div
-      className="w-full min-h-dvh flex flex-col justify-between items-center pb-6 pt-6 px-4 sm:px-5"
+      className="w-full min-h-dvh flex flex-col justify-between items-center"
       style={{ background: "rgb(18,19,22)" }}
       data-node-id="9:363"
     >
-      <div className="flex flex-1 flex-col justify-between items-center max-w-[420px] w-full">
+      <div className="flex flex-1 flex-col justify-between items-center max-w-[420px] w-full px-4 sm:px-5 py-6 sm:py-8">
 
         {/* TOP: Header HUD */}
         <div className="flex flex-col gap-4 w-full shrink-0" data-node-id="9:364">

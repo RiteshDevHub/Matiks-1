@@ -48,14 +48,15 @@ export default function LossScreen({
 
   return (
     <div
-      className="relative w-full min-h-dvh overflow-hidden flex flex-col justify-between"
+      className="relative w-full min-h-dvh overflow-hidden flex flex-col items-center justify-between"
       style={{ background: "#0d0d0d", fontFamily: "'Space Grotesk', sans-serif" }}
     >
-      {/* ── Navigation bar ── */}
-      <nav
-        className="flex items-center justify-between px-5 pt-4 pb-2"
-        style={{ position: "relative", zIndex: 10 }}
-      >
+      <div className="w-full max-w-[460px] mx-auto flex flex-col flex-1 justify-between">
+        {/* ── Navigation bar ── */}
+        <nav
+          className="flex items-center justify-between px-5 pt-4 pb-2 w-full"
+          style={{ position: "relative", zIndex: 10 }}
+        >
         {/* Back */}
         <button
           type="button"
@@ -299,6 +300,7 @@ export default function LossScreen({
             PLAY DUEL
           </button>
         </div>
+      </div>
       </div>
 
       {/* ── Match Analysis panel ── */}

@@ -36,7 +36,7 @@ export default function SearchingPage() {
       `}</style>
 
       {/* Main vertically-centred block */}
-      <div className="flex flex-col items-center gap-8 px-6 w-full" data-node-id="4:123">
+      <div className="flex flex-col items-center gap-8 px-6 w-full max-w-[420px]" data-node-id="4:123">
 
         {/* Label */}
         <p
@@ -122,7 +122,7 @@ export default function SearchingPage() {
 
       {/* Cancel button */}
       <div
-        className="absolute left-[35px] right-[35px] bottom-[60px]"
+        className="absolute left-0 right-0 bottom-[60px] max-w-[420px] mx-auto px-6 w-full"
         data-node-id="4:139"
       >
         <button

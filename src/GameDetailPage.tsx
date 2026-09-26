@@ -63,12 +63,13 @@ export default function GameDetailPage() {
 
   return (
     <div
-      className="relative w-full min-h-dvh flex flex-col"
+      className="relative w-full min-h-dvh flex flex-col items-center justify-between"
       style={{ background: "rgb(18, 19, 22)" }}
       data-node-id="2:1172"
     >
-      {/* Top Navigation Header */}
-      <div className="flex flex-col w-full" data-node-id="2:1186">
+      <div className="flex flex-1 flex-col justify-between max-w-[420px] w-full mx-auto">
+        {/* Top Navigation Header */}
+        <div className="flex flex-col w-full" data-node-id="2:1186">
         {/* Main App Top Bar */}
         <div className="flex items-center justify-between px-4 py-3 w-full" data-node-id="2:1202">
           {/* Back button */}
@@ -210,5 +211,6 @@ export default function GameDetailPage() {
         </button>
       </div>
     </div>
+  </div>
   );
 }

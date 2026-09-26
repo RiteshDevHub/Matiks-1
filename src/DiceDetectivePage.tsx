@@ -248,7 +248,7 @@ export default function DiceDetectivePage() {
   }
 
   return (
-    <div className="bg-[#121316] w-full min-h-dvh flex flex-col justify-between" data-node-id="6:165">
+    <div className="bg-[#121316] w-full min-h-dvh flex flex-col justify-between items-center" data-node-id="6:165">
       <div className="flex flex-1 flex-col justify-between px-4 sm:px-5 py-6 sm:py-8 max-w-[420px] mx-auto w-full">
 
         {/* TOP: Players + Scores */}
