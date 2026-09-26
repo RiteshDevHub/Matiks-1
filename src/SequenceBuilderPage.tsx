@@ -12,7 +12,7 @@ const imgStarIcon      = `${assetPathPrefix}/dd268.svg`;
 const imgTimerIcon     = `${assetPathPrefix}/ed88e.svg`;
 const imgBackspaceIcon = `${assetPathPrefix}/caa66.svg`;
 
-const TOTAL_SECONDS = 60; // 1-minute game
+const TOTAL_SECONDS = 90; // 1.5-minute game
 const OPPONENT_THRESHOLDS = [40, 20, 5]; // timeLeft values when opponent gets 1, 2, 3 points
 
 // ────────────────────────── Component ──────────────────────────

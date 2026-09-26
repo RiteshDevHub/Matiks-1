@@ -12,7 +12,7 @@ const imgTimerIcon = `${assetPathPrefix}/ed88e.svg`;
 const imgUndoArrow = `${assetPathPrefix}/675a8.svg`;
 const imgClearIcon = `${assetPathPrefix}/737d9.svg`;
 
-const TOTAL_SECONDS = 60; // 1-minute duel timer
+const TOTAL_SECONDS = 90; // 1.5-minute duel timer
 const OPPONENT_THRESHOLDS = [40, 20, 5]; // timeLeft values when opponent gets 1, 2, 3 points
 
 interface SlotItem {

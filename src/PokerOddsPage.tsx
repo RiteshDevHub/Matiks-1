@@ -17,7 +17,7 @@ const imgTimerIcon     = `${assetPathPrefix}/ed88e.svg`;
 const imgBackspaceIcon = `${assetPathPrefix}/caa66.svg`;
 const imgCardBack      = `${assetPathPrefix}/b17e4.png`;
 
-const TOTAL_SECONDS = 60; // 1-minute duel timer
+const TOTAL_SECONDS = 90; // 1.5-minute duel timer
 const OPPONENT_THRESHOLDS = [40, 20, 5]; // timeLeft values when opponent reaches 1, 2, 3 points
 
 const KEYS = [
