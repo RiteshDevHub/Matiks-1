@@ -1,4 +1,5 @@
 import { Routes, Route, useParams } from "react-router-dom";
+import { Analytics } from "@vercel/analytics/react";
 import HomePage from "./HomePage";
 import GameDetailPage from "./GameDetailPage";
 import SearchingPage from "./SearchingPage";
@@ -34,6 +35,8 @@ function GamePlayRouter() {
 
 export default function App() {
   return (
+    <>
+    <Analytics />
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/game/:gameId" element={<GameDetailPage />} />
@@ -60,5 +63,6 @@ export default function App() {
         }
       />
     </Routes>
+    </>
   );
 }
