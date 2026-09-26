@@ -317,7 +317,7 @@ export default function HomePage() {
                 </div>
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center justify-between w-full">
-                    <div className="font-['Impact:Regular',Impact,impact,sans-serif] not-italic text-[#f3f4f6] text-[32px] tracking-[-0.6px] uppercase leading-normal">
+                    <div className="font-['Impact:Regular',Impact,impact,sans-serif] not-italic text-[#f3f4f6] text-[32px] tracking-[-0.6px] uppercase leading-tight">
                       {game.titleLines.map((line, i) => (
                         <p key={i} className={i < game.titleLines.length - 1 ? "mb-0" : ""}>
                           {line}
