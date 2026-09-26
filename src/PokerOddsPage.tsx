@@ -18,7 +18,7 @@ const imgBackspaceIcon = `${assetPathPrefix}/caa66.svg`;
 const imgCardBack      = `${assetPathPrefix}/b17e4.png`;
 
 const TOTAL_SECONDS = 60; // 1-minute duel timer
-const OPPONENT_THRESHOLDS = [45, 30, 15, 5]; // timeLeft values when opponent reaches 1, 2, 3, 4 points
+const OPPONENT_THRESHOLDS = [40, 20, 5]; // timeLeft values when opponent reaches 1, 2, 3 points
 
 const KEYS = [
   ["1", "2", "3"],
@@ -366,7 +366,7 @@ export default function PokerOddsPage() {
     : "";
 
   if (gameOver) {
-    if (playerScore >= opponentScore) {
+    if (playerScore > opponentScore) {
       return (
         <VictoryScreen
           playerScore={playerScore}
@@ -374,7 +374,7 @@ export default function PokerOddsPage() {
           onRematch={() => startNewRound(true)}
           flows={Math.max(1, Math.floor(playerScore / 2))}
           grinds={playerScore}
-          chokes={Math.max(0, 4 - playerScore)}
+          chokes={Math.max(0, 3 - playerScore)}
         />
       );
     } else {
@@ -385,7 +385,7 @@ export default function PokerOddsPage() {
           onRematch={() => startNewRound(true)}
           flows={Math.max(0, Math.floor(playerScore / 2))}
           grinds={playerScore}
-          chokes={Math.max(1, 4 - playerScore)}
+          chokes={Math.max(1, 3 - playerScore)}
         />
       );
     }

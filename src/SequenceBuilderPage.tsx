@@ -13,6 +13,7 @@ const imgTimerIcon     = `${assetPathPrefix}/ed88e.svg`;
 const imgBackspaceIcon = `${assetPathPrefix}/caa66.svg`;
 
 const TOTAL_SECONDS = 60; // 1-minute game
+const OPPONENT_THRESHOLDS = [40, 20, 5]; // timeLeft values when opponent gets 1, 2, 3 points
 
 // ────────────────────────── Component ──────────────────────────
 
@@ -32,6 +33,8 @@ export default function SequenceBuilderPage() {
 
   // ── Game state ──
   const [playerScore, setPlayerScore] = useState(0);
+  const [opponentScore, setOpponentScore] = useState(0);
+  const opponentIdxRef = useRef(0);
   const [streak, setStreak] = useState(0);
   const [timeLeft, setTimeLeft] = useState(TOTAL_SECONDS);
   const [gameOver, setGameOver] = useState(false);
@@ -48,6 +51,18 @@ export default function SequenceBuilderPage() {
     if (timeLeft <= 0) { setGameOver(true); return; }
     const t = setInterval(() => setTimeLeft(s => Math.max(0, s - 1)), 1000);
     return () => clearInterval(t);
+  }, [timeLeft, gameOver]);
+
+  // ── Opponent scoring (3 points across match, all by 55s) ──
+  useEffect(() => {
+    if (gameOver) return;
+    while (
+      opponentIdxRef.current < OPPONENT_THRESHOLDS.length &&
+      timeLeft <= OPPONENT_THRESHOLDS[opponentIdxRef.current]
+    ) {
+      opponentIdxRef.current++;
+      setOpponentScore(opponentIdxRef.current);
+    }
   }, [timeLeft, gameOver]);
 
   // Cleanup timers on unmount
@@ -209,6 +224,8 @@ export default function SequenceBuilderPage() {
   function startNewGame() {
     usedKeysRef.current.clear();
     setPlayerScore(0);
+    setOpponentScore(0);
+    opponentIdxRef.current = 0;
     setStreak(0);
     setDifficulty(1);
     setTimeLeft(TOTAL_SECONDS);
@@ -219,11 +236,11 @@ export default function SequenceBuilderPage() {
 
   // ── End screens ──
   if (gameOver) {
-    if (playerScore >= 5) {
+    if (playerScore > opponentScore) {
       return (
         <VictoryScreen
           playerScore={playerScore}
-          opponentScore={0}
+          opponentScore={opponentScore}
           onRematch={startNewGame}
           flows={roundCount}
           grinds={playerScore}
@@ -234,7 +251,7 @@ export default function SequenceBuilderPage() {
       return (
         <LossScreen
           playerScore={playerScore}
-          opponentScore={Math.max(1, playerScore + 1)}
+          opponentScore={opponentScore}
           onRematch={startNewGame}
           flows={0}
           grinds={0}
@@ -343,7 +360,7 @@ export default function SequenceBuilderPage() {
             </span>
           </div>
           <div className="border border-[#272a32] bg-[#181a1f] flex h-[28px] items-center justify-center rounded-full w-[56px]">
-            <span className="font-['Space_Grotesk:Bold'] font-bold text-[#7a7e89] text-[12px] leading-[16px]">0</span>
+            <span className="font-['Space_Grotesk:Bold'] font-bold text-[#7a7e89] text-[12px] leading-[16px]">{opponentScore}</span>
           </div>
         </div>
       </div>

@@ -13,7 +13,7 @@ const imgUndoArrow = `${assetPathPrefix}/675a8.svg`;
 const imgClearIcon = `${assetPathPrefix}/737d9.svg`;
 
 const TOTAL_SECONDS = 60; // 1-minute duel timer
-const OPPONENT_THRESHOLDS = [45, 30, 15, 5]; // timeLeft values when opponent gets 1, 2, 3, 4 points
+const OPPONENT_THRESHOLDS = [40, 20, 5]; // timeLeft values when opponent gets 1, 2, 3 points
 
 interface SlotItem {
   value: string;
@@ -321,7 +321,7 @@ export default function NumberLineRacePage() {
     : "";
 
   if (gameOver) {
-    if (playerScore >= opponentScore) {
+    if (playerScore > opponentScore) {
       return (
         <VictoryScreen
           playerScore={playerScore}
@@ -329,7 +329,7 @@ export default function NumberLineRacePage() {
           onRematch={startNewGame}
           flows={Math.max(1, Math.floor(playerScore / 2))}
           grinds={playerScore}
-          chokes={Math.max(0, 4 - playerScore)}
+          chokes={Math.max(0, 3 - playerScore)}
         />
       );
     } else {
@@ -340,7 +340,7 @@ export default function NumberLineRacePage() {
           onRematch={startNewGame}
           flows={Math.max(0, Math.floor(playerScore / 2))}
           grinds={playerScore}
-          chokes={Math.max(1, 4 - playerScore)}
+          chokes={Math.max(1, 3 - playerScore)}
         />
       );
     }
