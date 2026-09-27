@@ -10,12 +10,12 @@ import {
 } from "./pokerOddsGenerator";
 import VictoryScreen from "./VictoryScreen";
 import LossScreen from "./LossScreen";
-import pokerCardBack from "./assets/poker-card-back.png?inline";
 
 const assetPathPrefix  = `${import.meta.env.BASE_URL}assets`.replace(/([^:]\/)\/+/g, "$1");
 const imgStarIcon      = `${assetPathPrefix}/dd268.svg`;
 const imgTimerIcon     = `${assetPathPrefix}/ed88e.svg`;
 const imgBackspaceIcon = `${assetPathPrefix}/caa66.svg`;
+const imgCardBack      = `${assetPathPrefix}/poker-card-back.png`;
 
 const TOTAL_SECONDS = 90;
 const OPPONENT_THRESHOLDS = [40, 20, 5];
@@ -99,7 +99,7 @@ function CardBack({ width, height, rotate = 0 }: { width:number; height:number; 
       aria-hidden="true"
     >
       <img
-        src={pokerCardBack}
+        src={imgCardBack}
         alt=""
         draggable={false}
         style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", pointerEvents: "none" }}
