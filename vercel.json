@@ -1,5 +1,7 @@
 {
   "rewrites": [
-    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+    { "source": "/game/:path*", "destination": "/index.html" },
+    { "source": "/victory", "destination": "/index.html" },
+    { "source": "/loss", "destination": "/index.html" }
   ]
 }

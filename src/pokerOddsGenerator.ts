@@ -281,6 +281,7 @@ function nextCardCompletes(scenario: PokerScenario, known: CardData[], card: Car
   const h2 = scenario.hand[1];
   switch (scenario.typeId) {
     case "pair_all_visible":
+      return known.some(k => k.value === card.value);
     case "pair_hole_cards":
       return card.value === h1.value || card.value === h2.value;
     case "pair_specific":
@@ -381,7 +382,7 @@ function generatePairAllVisible(deck: CardData[]): PokerScenario {
     difficulty: 1,
     hand: [h1, h2],
     flop: [f1, f2, f3],
-    isOut: (_known, c) => c.value === h1.value || c.value === h2.value,
+    isOut: (known, c) => known.some(k => k.value === c.value),
     alreadyHaveTarget: hasPairedMadeHand,
   });
 }

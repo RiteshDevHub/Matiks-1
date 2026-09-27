@@ -10,7 +10,7 @@ import {
 } from "./pokerOddsGenerator";
 import VictoryScreen from "./VictoryScreen";
 import LossScreen from "./LossScreen";
-import pokerCardBack from "./assets/poker-card-back.png";
+import pokerCardBack from "./assets/poker-card-back.png?inline";
 
 const assetPathPrefix  = `${import.meta.env.BASE_URL}assets`.replace(/([^:]\/)\/+/g, "$1");
 const imgStarIcon      = `${assetPathPrefix}/dd268.svg`;
