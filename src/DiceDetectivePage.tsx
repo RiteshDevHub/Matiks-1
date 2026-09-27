@@ -396,18 +396,6 @@ export default function DiceDetectivePage() {
           )}
         </div>
 
-        {/* BOTTOM: Subtle Status Bar (Check Answer button removed) */}
-        {!gameOver && (
-          <div className="flex items-center justify-between px-2 pt-2 pb-1 text-[#7a7e89]">
-            <span className="font-['Space_Grotesk:Bold'] font-medium text-[11px] tracking-[0.5px]">
-              Level {difficulty}
-            </span>
-            <span className="font-['Space_Grotesk:Bold'] font-medium text-[11px] tracking-[0.5px]">
-              {selected.size} / {question.correctOutcomes.length} selected
-            </span>
-          </div>
-        )}
-
       </div>
     </div>
   );

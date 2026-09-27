@@ -17,8 +17,8 @@ const imgStarIcon      = `${assetPathPrefix}/dd268.svg`;
 const imgTimerIcon     = `${assetPathPrefix}/ed88e.svg`;
 const imgBackspaceIcon = `${assetPathPrefix}/caa66.svg`;
 
-const TOTAL_SECONDS = 60;
-const OPPONENT_THRESHOLDS = [25, 12, 4];
+const TOTAL_SECONDS = 90;
+const OPPONENT_THRESHOLDS = [40, 20, 5];
 const COMMUNITY_W = 60;
 const COMMUNITY_H = 86;
 
@@ -31,8 +31,8 @@ function initialRevealed(hiddenCount: number): boolean[] {
 function preferredHiddenCount(timeLeft: number, isFirstQuestion: boolean): 1 | 2 {
   if (isFirstQuestion) return 1;
   const elapsed = TOTAL_SECONDS - timeLeft;
-  if (elapsed < 20) return 1;
-  if (elapsed >= 40) return 2;
+  if (elapsed < 30) return 1;
+  if (elapsed >= 60) return 2;
   return Math.random() < 0.5 ? 1 : 2;
 }
 
