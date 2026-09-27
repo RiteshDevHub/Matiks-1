@@ -1,5 +1,5 @@
 // Poker Odds Duels game screen
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, type CSSProperties } from "react";
 import {
   generatePokerQuestion,
   type PokerScenario,
@@ -10,15 +10,31 @@ import {
 } from "./pokerOddsGenerator";
 import VictoryScreen from "./VictoryScreen";
 import LossScreen from "./LossScreen";
+import pokerCardBack from "./assets/poker-card-back.png";
 
-const assetPathPrefix  = "/assets";
+const assetPathPrefix  = `${import.meta.env.BASE_URL}assets`.replace(/([^:]\/)\/+/g, "$1");
 const imgStarIcon      = `${assetPathPrefix}/dd268.svg`;
 const imgTimerIcon     = `${assetPathPrefix}/ed88e.svg`;
 const imgBackspaceIcon = `${assetPathPrefix}/caa66.svg`;
-const imgCardBack      = `${assetPathPrefix}/b17e4.png`;
 
-const TOTAL_SECONDS = 90; // 1.5-minute duel timer
-const OPPONENT_THRESHOLDS = [40, 20, 5]; // timeLeft values when opponent reaches 1, 2, 3 points
+const TOTAL_SECONDS = 60;
+const OPPONENT_THRESHOLDS = [25, 12, 4];
+const COMMUNITY_W = 60;
+const COMMUNITY_H = 86;
+
+function initialRevealed(hiddenCount: number): boolean[] {
+  return hiddenCount === 2
+    ? [true, true, true, false, false]
+    : [true, true, true, true, false];
+}
+
+function preferredHiddenCount(timeLeft: number, isFirstQuestion: boolean): 1 | 2 {
+  if (isFirstQuestion) return 1;
+  const elapsed = TOTAL_SECONDS - timeLeft;
+  if (elapsed < 20) return 1;
+  if (elapsed >= 40) return 2;
+  return Math.random() < 0.5 ? 1 : 2;
+}
 
 const KEYS = [
   ["1", "2", "3"],
@@ -66,9 +82,28 @@ function FaceCard({ rank, suit, width, height, rotate = 0 }: FaceCardProps) {
 }
 
 function CardBack({ width, height, rotate = 0 }: { width:number; height:number; rotate?:number }) {
+  const radius = Math.max(6, Math.round(width * 0.09));
   return (
-    <div style={{ width, height, borderRadius:6, overflow:"hidden", flexShrink:0, transform:rotate?`rotate(${rotate}deg)`:undefined, boxShadow:"0px 6.737px 7.579px rgba(0,0,0,0.45),0px 1.684px 1.684px rgba(0,0,0,0.3)" }}>
-      <img alt="card back" src={imgCardBack} style={{ width:"108%", height:"105.85%", marginLeft:"-4.2%", marginTop:"-2.72%", display:"block" }} />
+    <div
+      style={{
+        width,
+        height,
+        borderRadius: radius,
+        overflow: "hidden",
+        flexShrink: 0,
+        transform: rotate ? `rotate(${rotate}deg)` : undefined,
+        boxShadow: "0px 6.737px 7.579px rgba(0,0,0,0.45),0px 1.684px 1.684px rgba(0,0,0,0.3)",
+        pointerEvents: "none",
+        userSelect: "none",
+      }}
+      aria-hidden="true"
+    >
+      <img
+        src={pokerCardBack}
+        alt=""
+        draggable={false}
+        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", pointerEvents: "none" }}
+      />
     </div>
   );
 }
@@ -81,7 +116,7 @@ function FlipCard({ card, revealed, width, height }: {
   const rank = RANK_LBL[card.value];
   const suit = SUIT_SYM[card.suit] as Suit;
   return (
-    <div style={{ width, height, perspective:700, cursor:"default", flexShrink:0 }}>
+    <div style={{ width, height, perspective:700, cursor:"default", flexShrink:0, pointerEvents:"none" }}>
       <div style={{
         width:"100%", height:"100%", position:"relative", transformStyle:"preserve-3d",
         transition:"transform 0.5s cubic-bezier(0.4,0,0.2,1)",
@@ -102,7 +137,7 @@ function FlipCard({ card, revealed, width, height }: {
 
 // ── Deal animation ─────────────────────────────────────────────────────────────
 
-function dealAnim(dealIdx: number, dealtCount: number): React.CSSProperties {
+function dealAnim(dealIdx: number, dealtCount: number): CSSProperties {
   const show = dealIdx < dealtCount;
   return {
     opacity: show ? 1 : 0,
@@ -120,7 +155,7 @@ export default function PokerOddsPage() {
   const [scenario, setScenario]   = useState<PokerScenario | null>(null);
   const [hand, setHand]           = useState<CardData[]>([]);
   const [community, setCommunity] = useState<CardData[]>([]);
-  const [revealed, setRevealed]   = useState<boolean[]>([true, true, true, false, false]);
+  const [revealed, setRevealed]   = useState<boolean[]>([true, true, true, true, false]);
   const [dealtCount, setDealtCount] = useState(7);
 
   // Difficulty & scores
@@ -144,6 +179,7 @@ export default function PokerOddsPage() {
   const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const subTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recentHistoryRef = useRef<RecentRoundInfo[]>([]);
+  const timeLeftRef = useRef(TOTAL_SECONDS);
 
   // ── New Round / Deal sequence ──
   const startNewRound = useCallback((resetProgression = false) => {
@@ -159,12 +195,18 @@ export default function PokerOddsPage() {
       setScore(0);
       opponentIdxRef.current = 0;
       setOpponentScore(0);
+      timeLeftRef.current = TOTAL_SECONDS;
       setTimeLeft(TOTAL_SECONDS);
       setGameOver(false);
       recentHistoryRef.current = [];
     }
 
-    const nextScen = generatePokerQuestion(difficultyRef.current, recentHistoryRef.current);
+    const isFirstQuestion = resetProgression || recentHistoryRef.current.length === 0;
+    const nextScen = generatePokerQuestion(
+      difficultyRef.current,
+      recentHistoryRef.current,
+      preferredHiddenCount(timeLeftRef.current, isFirstQuestion)
+    );
     recentHistoryRef.current.push({
       typeId: nextScen.typeId,
       numerator: nextScen.numerator,
@@ -173,16 +215,15 @@ export default function PokerOddsPage() {
     setScenario(nextScen);
     setHand(nextScen.hand);
     setCommunity(nextScen.community);
-    setRevealed([true, true, true, false, false]);
+    setRevealed(initialRevealed(nextScen.hiddenCount));
 
     setActive("n");
     setNumerator("");
     setDenom("");
 
-    // Deal animation: community first, then hole cards
+    // Deal animation: 5 community cards, then 2 hole cards
     setDealtCount(0);
-    const totalToDeal = nextScen.hiddenCount === 2 ? 7 : 6;
-    for (let i = 1; i <= totalToDeal; i++) {
+    for (let i = 1; i <= 7; i++) {
       setTimeout(() => setDealtCount(i), i * 110);
     }
   }, []);
@@ -192,13 +233,19 @@ export default function PokerOddsPage() {
     startNewRound(false);
   }, [startNewRound]);
 
-  // ── Timer countdown (2:00 -> 0:00) ──
+  // ── Timer countdown (1:00 -> 0:00) ──
   useEffect(() => {
     if (timeLeft <= 0) {
       setGameOver(true);
       return;
     }
-    const t = setInterval(() => setTimeLeft(s => Math.max(0, s - 1)), 1000);
+    const t = setInterval(() => {
+      setTimeLeft(s => {
+        const next = Math.max(0, s - 1);
+        timeLeftRef.current = next;
+        return next;
+      });
+    }, 1000);
     return () => clearInterval(t);
   }, [timeLeft]);
 
@@ -235,14 +282,12 @@ export default function PokerOddsPage() {
     // 3. Reveal the hidden community card(s) that satisfy the question
     if (subTimerRef.current) clearTimeout(subTimerRef.current);
     if (scenario.hiddenCount === 2) {
-      // Reveal turn card first
       setRevealed([true, true, true, true, false]);
-      // Sequentially reveal river card after 350ms
       subTimerRef.current = setTimeout(() => {
         setRevealed([true, true, true, true, true]);
       }, 350);
     } else {
-      setRevealed([true, true, true, true, false]);
+      setRevealed([true, true, true, true, true]);
     }
 
     // 4. Briefly show the winning revealed card(s), then automatically advance to the next challenge
@@ -257,7 +302,11 @@ export default function PokerOddsPage() {
       setDifficulty(difficultyRef.current);
 
       // Generate a brand new poker situation from a freshly shuffled 52-card deck
-      const nextScen = generatePokerQuestion(difficultyRef.current, recentHistoryRef.current);
+      const nextScen = generatePokerQuestion(
+        difficultyRef.current,
+        recentHistoryRef.current,
+        preferredHiddenCount(timeLeftRef.current, false)
+      );
       recentHistoryRef.current.push({
         typeId: nextScen.typeId,
         numerator: nextScen.numerator,
@@ -266,12 +315,10 @@ export default function PokerOddsPage() {
       setScenario(nextScen);
       setHand(nextScen.hand);
       setCommunity(nextScen.community);
-      setRevealed([true, true, true, false, false]);
+      setRevealed(initialRevealed(nextScen.hiddenCount));
 
-      // Deal animation for the new round
       setDealtCount(0);
-      const totalToDeal = nextScen.hiddenCount === 2 ? 7 : 6;
-      for (let i = 1; i <= totalToDeal; i++) {
+      for (let i = 1; i <= 7; i++) {
         setTimeout(() => setDealtCount(i), i * 110);
       }
     }, waitTime);
@@ -356,8 +403,8 @@ export default function PokerOddsPage() {
     return { rank: RANK_LBL[c.value], suit: SUIT_SYM[c.suit] as Suit };
   }
 
-  // Display either 4 community cards (1 hidden) or 5 community cards (2 hidden)
-  const visibleCommunity = community.slice(0, scenario?.hiddenCount === 2 ? 5 : 4);
+  const board = community.slice(0, 5);
+  const hiddenFrom = scenario?.hiddenCount === 2 ? 3 : 4;
 
   const winner = gameOver
     ? playerScore > opponentScore ? "You win! 🎉"
@@ -457,20 +504,18 @@ export default function PokerOddsPage() {
         </span>
       </div>
 
-      {/* ── Community cards (face-up flop + hidden card back that flips on correct) ── */}
-      <div className="flex items-center justify-center gap-[6px] w-full shrink-0 pb-4" data-node-id="22:104">
-        {visibleCommunity.map((card, i) => {
+      {/* ── Community cards: always 5 positions (3 or 4 face-up, rest face-down until correct) ── */}
+      <div className="flex items-center justify-center gap-[4px] sm:gap-[6px] w-full max-w-[380px] shrink-0 pb-4" data-node-id="22:104">
+        {board.map((card, i) => {
           const { rank, suit } = cardProps(card);
-          if (i < 3) {
-            return (
-              <div key={i} style={dealAnim(i, dealtCount)}>
-                <FaceCard rank={rank} suit={suit} width={66} height={94} />
-              </div>
-            );
-          }
+          const isHiddenSlot = i >= hiddenFrom;
           return (
-            <div key={i} style={dealAnim(i, dealtCount)}>
-              <FlipCard card={card} revealed={revealed[i]} width={66} height={94} />
+            <div key={`${card.suit}-${card.value}-${i}`} style={dealAnim(i, dealtCount)} className="flex justify-center min-w-0">
+              {isHiddenSlot ? (
+                <FlipCard card={card} revealed={revealed[i]} width={COMMUNITY_W} height={COMMUNITY_H} />
+              ) : (
+                <FaceCard rank={rank} suit={suit} width={COMMUNITY_W} height={COMMUNITY_H} />
+              )}
             </div>
           );
         })}
@@ -479,12 +524,12 @@ export default function PokerOddsPage() {
       {/* ── Hole cards (two player cards) ── */}
       <div className="relative w-full shrink-0 overflow-hidden mb-2" style={{ height:115 }} data-node-id="22:33">
         <div style={{ position:"absolute", left:"50%", top:8, transform:"translateX(-85px) rotate(-5deg)", transformOrigin:"top center", zIndex:1 }}>
-          <div style={dealAnim(visibleCommunity.length, dealtCount)}>
+          <div style={dealAnim(5, dealtCount)}>
             <FaceCard {...cardProps(hand[0])} width={100} height={142} />
           </div>
         </div>
         <div style={{ position:"absolute", left:"50%", top:8, transform:"translateX(-15px) rotate(5deg)", transformOrigin:"top center", zIndex:2 }}>
-          <div style={dealAnim(visibleCommunity.length + 1, dealtCount)}>
+          <div style={dealAnim(6, dealtCount)}>
             <FaceCard {...cardProps(hand[1])} width={100} height={142} />
           </div>
         </div>
